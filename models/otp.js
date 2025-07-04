@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      code: {
+      otp: {
         type: DataTypes.STRING,
         allowNull: false,
       },

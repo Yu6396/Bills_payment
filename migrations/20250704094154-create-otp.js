@@ -6,14 +6,14 @@ module.exports = {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true,
         allowNull: false,
+        primaryKey: true,
       },
       email: {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      code: {
+      otp: {
         type: Sequelize.STRING,
         allowNull: false,
       },
@@ -24,17 +24,17 @@ module.exports = {
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('NOW'),
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('NOW'),
-      },
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      }
     });
   },
 
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Otps');
-  },
+  }
 };

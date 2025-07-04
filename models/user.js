@@ -24,10 +24,14 @@ module.exports = (sequelize, DataTypes) => {
       first_name: {
         type: DataTypes.STRING,
         allowNull: false,
+        lowercase: true,
+        trim: true
       },
       last_name: {
         type: DataTypes.STRING,
         allowNull: false,
+        lowercase: true,
+        trim: true
       },
       email: {
         type: DataTypes.STRING,
@@ -36,25 +40,43 @@ module.exports = (sequelize, DataTypes) => {
         validate: {
           isEmail: true,
         },
+        lowercase: true,
+        trim: true
       },
       phone_number: {
         type: DataTypes.STRING,
         allowNull: true,
+        lowercase: true,
+        trim: true
       },
       password_salt: {
         type: DataTypes.STRING,
         allowNull: true,
+        lowercase: true,
+        trim: true
       },
       password_hash: {
         type: DataTypes.STRING,
         allowNull: false,
+        lowercase: true,
+        trim: true
       },
       email_verified:{
         type: DataTypes.BOOLEAN,
         defaultValue: false
 
+      },
+      createdAt: {
+        allowNull: false,
+        type: DataTypes.DATE
+      },
+      updatedAt: {
+        allowNull: false,
+        type: DataTypes.DATE
       }
+     
     },
+    
     {
       sequelize,
       modelName: 'User',

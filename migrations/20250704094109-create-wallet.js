@@ -21,23 +21,23 @@ module.exports = {
       },
       balance: {
         type: Sequelize.DECIMAL(12, 2),
-        defaultValue: 0.00,
         allowNull: false,
+        defaultValue: 0.00,
       },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('NOW'),
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.fn('NOW'),
-      },
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+      }
     });
   },
 
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Wallets');
-  },
+  }
 };

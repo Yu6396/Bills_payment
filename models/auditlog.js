@@ -1,26 +1,40 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
-  class AuditLog extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
-    static associate(models) {
-      // define association here
+  class AuditLog extends Model {}
+
+  AuditLog.init(
+    {
+      auditLog_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      admin_id: {
+        type: DataTypes.UUID,
+        allowNull: false
+      },
+      action: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      resource: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      timestamp: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+      }
+    },
+    {
+      sequelize,
+      modelName: 'AuditLog',
+      tableName: 'AuditLogs',
+      timestamps: true 
     }
-  }
-  AuditLog.init({
-    admin_id: DataTypes.INTEGER,
-    action: DataTypes.STRING,
-    resource: DataTypes.STRING,
-    timestamp: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'AuditLog',
-  });
+  );
+
   return AuditLog;
 };
