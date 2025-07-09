@@ -9,23 +9,30 @@ const {
   verifyPayment,
 } = require("../services/paystackService");
 const { TRANSACTION_STATUS } = require("../../constants/data");
+const { saltAndHashPassword } = require("../utils");
+const messages = require("../messages/index");
+
 
 const createNewUser = async (req, res) => {
-  const { first_name, last_name, email, phone, password } = req.body;
+  const { first_name, last_name, email, phone_number, password } = req.body;
 
   try {
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      throw new Error({ message: "User already exists" });
+      throw new Error(messages.USER_ALREADY_EXISTS);
     }
-    
 
-    const{
-      salt,
-      hashedPassword
-    } = await saltAndHashPassword(password);
+    const { salt, hashedPassword } = await saltAndHashPassword(password);
     user_id = uuidv4();
-   
+    await User.create({
+      user_id: user_id,
+      first_name,
+      last_name,
+      email,
+      phone_number,
+      password_salt: salt,
+      password_hash: hashedPassword,
+    });
 
     await Wallet.create({
       wallet_id: uuidv4(),
@@ -33,22 +40,12 @@ const createNewUser = async (req, res) => {
       balance: 0,
     });
 
-    await User.create({
-      user_id: user_id,
-      first_name,
-      last_name,
-      email,
-      phone,
-      password_salt: salt,
-      password_hash: hashedPassword,
-    });
-
     const otpCode = generateOtp();
-    const expiredAt = new Date(Date.now() + 1 * 60 * 1000); // 1 minutes from now
+    const expiresAt = new Date(Date.now() + 1 * 60 * 1000);
     await Otp.create({
       email,
       otp: otpCode,
-      expired_at: expiredAt,
+      expires_at: expiresAt,
     });
     await sendEmail(email, "Verify your otp", { otp: otpCode }, "otp");
 
@@ -56,8 +53,11 @@ const createNewUser = async (req, res) => {
       message: "Verify Otp sent to your email",
     });
   } catch (error) {
-    console.error("Error creating user: ", error.message);
-    return res.status(400).json(error.message || "Internal server error");
+    console.error("Error creating user: ", error.message || error);
+    return res.status(400).json({
+      message: "Failed to create user",
+      error: error.message || "Unknown error",
+    });
   }
 };
 
@@ -65,23 +65,28 @@ const verifyUser = async (req, res) => {
   const { email, otp } = req.params;
   try {
     const existingUser = await Otp.findOne({ where: { email, otp } });
-    console.log("findMail1: ", existingUser);
 
     if (!existingUser) {
-      throw new Error("Invalid Otp");
+      throw new Error(messages.INVALID_OTP);
     }
-    console.log("hey1: ");
-    if (new Date() > existingUser.expired_at) {
-      throw new Error("Otp expired");
-    }
-    console.log("hey2: ");
 
-    // await Otp.destroy({ where: { email } });
+    if (new Date() > existingUser.expired_at) {
+      throw new Error(messages.OTP_EXPIRED);
+    }
+
+    await Otp.destroy({ where: { email } });
+    await User.update({ email_verified: true }, { where: { email } });
+    const Userinfo = await User.findOne({ where: { email } });
+    await sendEmail(
+      email,
+      "WELCOME HOME",
+      { name: `${Userinfo.first_name} ${Userinfo.last_name}` },
+      "welcome"
+    );
     res.status(201).json({
       message: "Otp verified, account created successfully",
     });
   } catch (error) {
-    console.error("Error creating user: ", error.message);
     res.status(400).json({ message: error.message || "Internal server error" });
   }
 };
@@ -91,14 +96,14 @@ const login = async (req, res) => {
   try {
     const checkIfUserExists = await User.findOne({ where: { email } });
     if (!checkIfUserExists) {
-      throw new Error({ message: "User not found" });
+      throw new Error(messages.USER_NOT_FOUND);
     }
     const isPasswordValid = await bcrypt.compare(
       password,
-      checkIfUserExists.passwordHash
+      checkIfUserExists.password_hash
     );
     if (!isPasswordValid) {
-      throw new Error({ message: "Invalid email or password" });
+      throw new Error(messages.INVALID_PASSWORD);
     }
     const payload = { email: checkIfUserExists.email, id: uuidv4() };
 
@@ -131,7 +136,7 @@ const startFundAccount = async (req, res) => {
   try {
     await User.findOne({ where: { email } });
     if (!email) {
-      throw new Error("User not found");
+      throw new Error("Email is required");
     }
     const transaction = await intializePayment(email, amount);
     if (transaction.status === false) {
@@ -154,19 +159,16 @@ const completeFundAccount = async (req, res) => {
     const checkIfreferenceExists = await Transaction.findOne({
       where: { payment_reference: reference },
     });
-    console.log("ref", checkIfreferenceExists);
-
+    
     if (reference === checkIfreferenceExists?.dataValues?.payment_reference) {
       throw new Error("Payment reference already used");
     }
     const verifyPaymentTransaction = await verifyPayment(reference);
-    console.log("object2", verifyPaymentTransaction);
 
     if (verifyPaymentTransaction.data.status === false) {
       throw new Error("Transaction failed");
     }
     const checkWallet = await Wallet.findOne({ where: { user_id: id } });
-    console.log("object1", checkWallet);
 
     await Wallet.update(
       {
@@ -180,6 +182,7 @@ const completeFundAccount = async (req, res) => {
     await Transaction.create({
       transaction_id: uuidv4(),
       user_id: id,
+      wallet_id: checkWallet.id,
       amount: verifyPaymentTransaction.data.data.amount,
       status: TRANSACTION_STATUS.SUCCESS,
       payment_reference: verifyPaymentTransaction?.data?.data?.reference,

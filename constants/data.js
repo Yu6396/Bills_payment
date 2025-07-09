@@ -11,5 +11,9 @@ const NETWORK_PROVIDERS = {
   AIRTEL: 'airtel',
   ETISALAT: '9mobile'
 }
+const TRANSACTION_TYPE = {
+  FUND: 'fund',
+  WITHDRAW: 'withdraw'
+}
 
-module.exports = { TRANSACTION_STATUS, NETWORK_PROVIDERS }
+module.exports = { TRANSACTION_STATUS, NETWORK_PROVIDERS, TRANSACTION_TYPE }

@@ -7,7 +7,7 @@ const createUserSchema = Joi.object({
     .email({ minDomainSegments: 2, tlds: { allow: ["com", "net"] } })
     .required(),
   password: Joi.string().min(8).required(),
-  phone: Joi.string().required(),
+  phone_number: Joi.string().required(),
 })
 const loginSchema = Joi.object({
   email: Joi.string()

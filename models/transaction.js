@@ -19,10 +19,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: false
       },
-      type: DataTypes.STRING,
       amount: DataTypes.DECIMAL(12, 2),
       status: DataTypes.STRING,
-      description: DataTypes.STRING,
+     payment_reference: DataTypes.STRING,
       createdAt: {
         allowNull: false,
         type: DataTypes.DATE

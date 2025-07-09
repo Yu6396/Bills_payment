@@ -29,10 +29,6 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      type: {
-        type: Sequelize.STRING,
-        allowNull: true
-      },
       amount: {
         type: Sequelize.DECIMAL(12, 2),
         allowNull: true
@@ -41,7 +37,7 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true
       },
-      description: {
+      payment_reference: {
         type: Sequelize.STRING,
         allowNull: true
       },
