@@ -6,6 +6,9 @@ const port = process.env.APP_PORT || 3000;
 const bodyParser = require("body-parser");
 const userRoutes = require("./src/routes/userRoutes");
 // const billsPaymentRoutes = require("./src/routes/billsPaymentRoutes");
+
+
+const userRoute = require("./src/routes/userRoutes")
 app.use(bodyParser.json());
 
 

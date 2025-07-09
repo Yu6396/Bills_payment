@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       amount: DataTypes.DECIMAL(12, 2),
       status: DataTypes.STRING,
-     payment_reference: DataTypes.STRING,
+      payment_reference: DataTypes.STRING,
       createdAt: {
         allowNull: false,
         type: DataTypes.DATE

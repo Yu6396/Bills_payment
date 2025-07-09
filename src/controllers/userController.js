@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { generateOtp } = require("../utils");
 const { User, Otp, Wallet, Transaction } = require("../../models");
 const bcrypt = require("bcrypt");
@@ -12,14 +13,23 @@ const { TRANSACTION_STATUS } = require("../../constants/data");
 const { saltAndHashPassword } = require("../utils");
 const messages = require("../messages/index");
 
-
-const createNewUser = async (req, res) => {
-  const { first_name, last_name, email, phone_number, password } = req.body;
+const createUser = async (req, res) => {
+  const {
+    first_name,
+    last_name,
+    email,
+    phone_number,
+    password,
+    confirmPassword,
+  } = req.body;
 
   try {
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       throw new Error(messages.USER_ALREADY_EXISTS);
+    }
+    if (password !== confirmPassword) {
+      throw new Error(messages.PASSWORD_NOT_MATCH);
     }
 
     const { salt, hashedPassword } = await saltAndHashPassword(password);
@@ -91,7 +101,7 @@ const verifyUser = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+const loginUser = async (req, res) => {
   const { email, password } = req.body;
   try {
     const checkIfUserExists = await User.findOne({ where: { email } });
@@ -129,13 +139,172 @@ const login = async (req, res) => {
   }
 };
 
-const startFundAccount = async (req, res) => {
-  const { amount } = req.body;
+const resendOtp = async (req, res) => {
   const { email } = req.params;
 
   try {
-    await User.findOne({ where: { email } });
-    if (!email) {
+    const otpRecord = await Otp.findOne({ where: { email } });
+
+    if (otpRecord && otpRecord.expires_at > new Date()) {
+      await sendEmail(email, "Your OTP", { otp: otpRecord.otp }, "otp");
+
+      return res.status(200).json({
+        message: "OTP resent successfully",
+      });
+    }
+
+    const newOtp = generateOtp();
+    const newExpiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+
+    await Otp.delete({ where: { email } });
+    await Otp.create({
+      email,
+      otp: newOtp,
+      expires_at: newExpiresAt,
+    });
+
+    await sendEmail(email, "Your OTP", { otp: newOtp }, "otp");
+
+    return res.status(200).json({
+      message: "New OTP generated and sent",
+    });
+  } catch (error) {
+    return res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+const changePassword = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { oldPassword, newPassword } = req.body;
+
+    const checkDBForPassword = await User.findOne({ where: { user_id } });
+    const checkIfPasswordIsCorrect = await comparePassword(
+      oldPassword,
+      checkDBForPassword.password_hash
+    );
+
+    if (checkIfPasswordIsCorrect === false) {
+      throw new Error(messages.WRONG_PASSWORD);
+    }
+    if (newPassword === oldPassword) {
+      throw new Error(messages.SAME_PASSWORD);
+    }
+
+    const { salt, hashedPassword } = await saltAndHashPassword(newPassword);
+
+    await User.update(
+      { where: { user_id } },
+      {
+        $set: {
+          password_hash: hashedPassword,
+          password_salt: salt,
+        },
+      }
+    );
+
+    res.status(200).json({
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+const startForgetPassword = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const isEmailAvailable = await User.findOne({ where: { email } });
+    if (isEmpty(isEmailAvailable)) {
+      throw new Error(messages.USER_NOT_FOUND);
+    }
+    const newOtp = generateOtp();
+    const expiredAt = new Date(Date.now() + 10 * 60 * 1000);
+    await Otp.create({ email, otp: newOtp, expires_at: expiredAt });
+    await sendEmail(email, "Reset password", { otp: newOtp }, "resetPassword");
+
+    res.status(200).json({
+      message: "Otp sent successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+const completeForgetPassword = async (req, res) => {
+  const { email, otp } = req.params;
+  const { newPassword, confirmPassword } = req.body;
+  try {
+    const isEmailAvailable = await Otp.findOne({ where: { email, otp } });
+
+    if (isEmailAvailable.otp !== otp || isEmailAvailable.email !== email) {
+      throw new Error(messages.INVALID_OTP);
+    }
+
+    if (isEmailAvailable.expires_at <= new Date()) {
+      throw new Error(messages.OTP_EXPIRED);
+    }
+    if (newPassword !== confirmPassword) {
+      throw new Error(messages.PASSWORD_NOT_MATCH);
+    }
+    const { salt, hashedPassword } = await saltAndHashPassword(newPassword);
+    await User.update(
+      { where: { email } },
+      {
+        $set: {
+          password_hash: hashedPassword,
+          password_salt: salt,
+        },
+      }
+    );
+    await Otp.delete({ where: { email: email } });
+    res.status(200).json({
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
+const updateUserProfile = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { first_name, last_name, phone_number, email } = req.body;
+    const checkIfUserExists = await User.findOne({ where: { user_id } });
+    if (!checkIfUserExists) {
+      throw new Error(messages.USER_NOT_FOUND);
+    }
+    await User.update(
+      { where: { user_id } },
+      {
+        $set: {
+          first_name,
+          last_name,
+          phone_number,
+          email,
+        },
+      }
+    );
+    res.status(200).json({
+      message: "Profile updated successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+const startFundAccount = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const { email } = req.params;
+    const checkUser = await User.findOne({ where: { email } });
+    if (!checkUser.email) {
       throw new Error("Email is required");
     }
     const transaction = await intializePayment(email, amount);
@@ -147,6 +316,7 @@ const startFundAccount = async (req, res) => {
       data: transaction.data.data,
     });
   } catch (error) {
+    console.log("error", error);
     res.status(400).json({
       message: error.message || "Something went wrong",
     });
@@ -159,7 +329,7 @@ const completeFundAccount = async (req, res) => {
     const checkIfreferenceExists = await Transaction.findOne({
       where: { payment_reference: reference },
     });
-    
+
     if (reference === checkIfreferenceExists?.dataValues?.payment_reference) {
       throw new Error("Payment reference already used");
     }
@@ -200,9 +370,14 @@ const completeFundAccount = async (req, res) => {
 };
 
 module.exports = {
-  createNewUser,
+  createUser,
   verifyUser,
   startFundAccount,
-  login,
+  loginUser,
+  completeForgetPassword,
+  updateUserProfile,
   completeFundAccount,
+  resendOtp,
+  changePassword,
+  startForgetPassword,
 };

@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../../models/user");
-const Admin = require("../../model/admin");
+const Admin = require("../../models/admin");
 
 
 const UserAuthorization = (req, res, next) => {
@@ -20,7 +20,7 @@ const UserAuthorization = (req, res, next) => {
     }
     const checkDB = await User.findOne({ where: { email: decoded.email } });
 
-    req.params.id = checkDB.user_id;
+    req.params.user_id = checkDB.user_id;
     req.params.email = checkDB.email;
 
     next();
