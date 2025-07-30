@@ -195,13 +195,12 @@ const changePassword = async (req, res) => {
     const { salt, hashedPassword } = await saltAndHashPassword(newPassword);
 
     await User.update(
-      { where: { user_id } },
+       { where: { user_id } },
       {
-        $set: {
-          password_hash: hashedPassword,
-          password_salt: salt,
-        },
+        password_hash: hashedPassword,
+        password_salt: salt,
       }
+     
     );
 
     res.status(200).json({
@@ -341,12 +340,13 @@ const completeFundAccount = async (req, res) => {
     const checkWallet = await Wallet.findOne({ where: { user_id: id } });
 
     await Wallet.update(
+       { where: { user_id: id } },
       {
         balance:
           parseInt(checkWallet?.dataValues?.balance) +
           parseInt(verifyPaymentTransaction?.data?.data?.amount),
-      },
-      { where: { user_id: id } }
+      }
+     
     );
 
     await Transaction.create({

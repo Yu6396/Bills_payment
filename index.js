@@ -6,10 +6,15 @@ const port = process.env.APP_PORT || 3000;
 const bodyParser = require("body-parser");
 const userRoutes = require("./src/routes/userRoutes");
 // const billsPaymentRoutes = require("./src/routes/billsPaymentRoutes");
-
-
 const userRoute = require("./src/routes/userRoutes")
+const passport = require('./config/passport');
+const oauthRoutes = require('./src/routes/authRoutes');
 app.use(bodyParser.json());
+app.use(passport.initialize());
+app.use("/api/v1/user", userRoute)
+app.use('/auth', oauthRoutes);
+
+
 
 
 

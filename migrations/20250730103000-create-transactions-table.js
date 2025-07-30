@@ -6,50 +6,34 @@ module.exports = {
       transaction_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        allowNull: false,
         primaryKey: true
       },
       user_id: {
         type: Sequelize.UUID,
-        allowNull: false,
-        references: {
-          model: 'Users',
-          key: 'user_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        allowNull: false
       },
       wallet_id: {
         type: Sequelize.UUID,
-        allowNull: false,
-        references: {
-          model: 'Wallets',
-          key: 'wallet_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        allowNull: false
       },
       amount: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: true
+        type: Sequelize.DECIMAL(12, 2)
       },
       status: {
-        type: Sequelize.STRING,
-        allowNull: true
+        type: Sequelize.STRING
       },
       payment_reference: {
-        type: Sequelize.STRING,
-        allowNull: true
+        type: Sequelize.STRING
       },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.fn('NOW')
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.fn('NOW')
       }
     });
   },

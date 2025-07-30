@@ -1,43 +1,41 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Wallets', {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.createTable('Wallet', {
       wallet_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
         allowNull: false,
-        primaryKey: true,
+        primaryKey: true
       },
       user_id: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'Users',
-          key: 'user_id',
+          model: 'Users',      // Your table name
+          key: 'user_id'       // Referencing correct PK field
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       balance: {
         type: Sequelize.DECIMAL(12, 2),
-        allowNull: false,
-        defaultValue: 0.00,
+        defaultValue: 0.00
       },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },
 
-  down: async (queryInterface, Sequelize) => {
+  async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('Wallets');
   }
 };
