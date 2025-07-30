@@ -1,18 +1,13 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      // e.g., User.hasMany(models.OAuthCredential) if using a separate table
     }
   }
+
   User.init(
     {
       user_id: {
@@ -57,14 +52,18 @@ module.exports = (sequelize, DataTypes) => {
       },
       password_hash: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true, // ✅ made optional for Google users
         lowercase: true,
         trim: true
       },
-      email_verified:{
+      email_verified: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
-
+      },
+      provider: {
+        type: DataTypes.STRING,
+        allowNull: true, 
+        defaultValue: 'local'
       },
       createdAt: {
         allowNull: false,
@@ -74,9 +73,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         type: DataTypes.DATE
       }
-     
     },
-    
     {
       sequelize,
       modelName: 'User',
@@ -84,5 +81,6 @@ module.exports = (sequelize, DataTypes) => {
       timestamps: true,
     }
   );
+
   return User;
 };
