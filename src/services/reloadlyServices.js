@@ -34,7 +34,7 @@ const getAirtimeAccessToken = async () => {
 
 const getAllBillersCategory = async () => {
   const getToken = await getUitilityAccessToken();
-  // console.log("object", getToken)
+  console.log("object", getToken)
   if (!getToken) {
     throw new Error("Failed to get access token");
   }

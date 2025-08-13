@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { generateOtp } = require("../utils");
-const { User, Otp, Wallet, Transaction } = require("../../models");
+const { sequelize, User, Otp, Wallet, Transaction } = require("../../models");
 const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 const sendEmail = require("../services/emailService");
@@ -195,12 +195,11 @@ const changePassword = async (req, res) => {
     const { salt, hashedPassword } = await saltAndHashPassword(newPassword);
 
     await User.update(
-       { where: { user_id } },
+      { where: { user_id } },
       {
         password_hash: hashedPassword,
         password_salt: salt,
       }
-     
     );
 
     res.status(200).json({
@@ -323,49 +322,75 @@ const startFundAccount = async (req, res) => {
 };
 
 const completeFundAccount = async (req, res) => {
-  const { reference, id } = req.params;
-  try {
-    const checkIfreferenceExists = await Transaction.findOne({
-      where: { payment_reference: reference },
-    });
+  const { reference } = req.body;
+  const {user_id} = req.params
 
-    if (reference === checkIfreferenceExists?.dataValues?.payment_reference) {
-      throw new Error("Payment reference already used");
+  if (!reference) {
+    return res.status(400).json({ error: "Payment reference is required" });
+  }
+
+  const t = await sequelize.transaction();
+
+  try {
+    const existingTx = await Transaction.findOne({
+      where: { payment_reference: reference },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (existingTx) {
+      await t.rollback();
+      return res.status(200).json({ message: "Transaction already processed" });
     }
+
     const verifyPaymentTransaction = await verifyPayment(reference);
+    // if (data.status !== "success") {
+    //   await t.rollback();
+    //   return res.status(400).json({ error: "Payment not successful" });
+    // }
 
     if (verifyPaymentTransaction.data.status === false) {
       throw new Error("Transaction failed");
     }
-    const checkWallet = await Wallet.findOne({ where: { user_id: id } });
 
-    await Wallet.update(
-       { where: { user_id: id } },
+    const data = verifyPaymentTransaction.data.data;
+
+    const amountInNaira = data.amount / 100;
+
+
+    const wallet = await Wallet.findOne({
+      where: { user_id },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
+
+    wallet.balance = parseFloat(wallet.balance || 0) + amountInNaira;
+    await wallet.save({ transaction: t });
+
+    await Transaction.create(
       {
-        balance:
-          parseInt(checkWallet?.dataValues?.balance) +
-          parseInt(verifyPaymentTransaction?.data?.data?.amount),
-      }
-     
+        transaction_id: uuidv4(),
+        user_id,
+        wallet_id: wallet.wallet_id,
+        amount: amountInNaira,
+        status: TRANSACTION_STATUS.COMPLETED,
+        payment_reference: reference,
+      },
+      { transaction: t }
     );
 
-    await Transaction.create({
-      transaction_id: uuidv4(),
-      user_id: id,
-      wallet_id: checkWallet.id,
-      amount: verifyPaymentTransaction.data.data.amount,
-      status: TRANSACTION_STATUS.SUCCESS,
-      payment_reference: verifyPaymentTransaction?.data?.data?.reference,
-    });
-
-    res.status(200).json({
-      message: "Transaction verified successfully",
-      data: verifyPaymentTransaction.data.data,
+    await t.commit();
+    return res.status(200).json({
+      message: "Wallet funded successfully",
+      new_balance: wallet.balance,
     });
   } catch (error) {
-    res.status(400).json({
-      message: error.message || "Something went wrong",
-    });
+    await t.rollback();
+    console.error("Fund account error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 

@@ -5,7 +5,7 @@ const { PurchaseUtilityBills, GetAllUtilityBillers, GetAllAirtimeOperators, GetA
 
 Router.post("/buy-utility-bill/:billerID/:id", PurchaseUtilityBills)
 
-Router.get("/get-all-Utility-billers/", GetAllUtilityBillers) // get all utility billers
+Router.get("/get-all-Utility-billers", GetAllUtilityBillers) // get all utility billers
 
 Router.get("/get-all-airtime-operators/", GetAllAirtimeOperators) // get all airtime operators
 

@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
-const User = require("../../models/user");
-const Admin = require("../../models/admin");
+const {User} = require("../../models");
+const {Admin} = require("../../models/admin");
 
 
 const UserAuthorization = (req, res, next) => {

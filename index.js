@@ -5,7 +5,7 @@ const port = process.env.APP_PORT || 3000;
 // const cors = require("cors");
 const bodyParser = require("body-parser");
 const userRoutes = require("./src/routes/userRoutes");
-// const billsPaymentRoutes = require("./src/routes/billsPaymentRoutes");
+const billsPaymentRoutes = require("./src/routes/billsPaymentRoutes");
 const userRoute = require("./src/routes/userRoutes")
 const passport = require('./config/passport');
 const oauthRoutes = require('./src/routes/authRoutes');
@@ -19,7 +19,7 @@ app.use('/auth', oauthRoutes);
 
 
 app.use("/api/v1/user", userRoutes)
-// app.use("/api/v1/utility-bills", billsPaymentRoutes)
+app.use("/api/v1/utility-bills", billsPaymentRoutes)
 
 
 

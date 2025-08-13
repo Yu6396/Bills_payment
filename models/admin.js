@@ -2,7 +2,11 @@
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class Admin extends Model {}
+  class Admin extends Model {
+    static associate(models) {
+      // associations here if needed
+    }
+  }
 
   Admin.init(
     {
@@ -14,44 +18,46 @@ module.exports = (sequelize, DataTypes) => {
       first_name: {
         type: DataTypes.STRING,
         allowNull: false,
-        lowercase: true,
-        trim: true
+        set(value) {
+          if (value) this.setDataValue('first_name', value.trim().toLowerCase());
+        }
       },
       last_name: {
         type: DataTypes.STRING,
         allowNull: false,
-        lowercase: true,
-        trim: true
+        set(value) {
+          if (value) this.setDataValue('last_name', value.trim().toLowerCase());
+        }
       },
       email: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
-        lowercase: true,
-        trim: true
+        validate: { isEmail: true },
+        set(value) {
+          if (value) this.setDataValue('email', value.trim().toLowerCase());
+        }
       },
       password_hash: {
         type: DataTypes.STRING,
-        allowNull: false,
-        lowercase: true,
-        trim: true
+        allowNull: false
       },
       password_salt: {
         type: DataTypes.STRING,
-        allowNull: false,
-        lowercase: true,
-        trim: true
+        allowNull: false
       },
-      address:{
+      address: {
         type: DataTypes.STRING,
-        lowercase: true,
-        trim: true
+        set(value) {
+          if (value) this.setDataValue('address', value.trim().toLowerCase());
+        }
       },
       phone_number: {
         type: DataTypes.STRING,
         allowNull: false,
-        lowercase: true,
-        trim: true
+        set(value) {
+          if (value) this.setDataValue('phone_number', value.trim().toLowerCase());
+        }
       },
       role: {
         type: DataTypes.STRING,

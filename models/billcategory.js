@@ -1,39 +1,46 @@
-"use strict";
-module.exports = {
-  async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("BillCategories", {
+'use strict';
+const { Model } = require('sequelize');
+
+module.exports = (sequelize, DataTypes) => {
+  class BillCategory extends Model {
+    static associate(models) {
+      // One category can have many bill providers
+      BillCategory.hasMany(models.BillProvider, {
+        foreignKey: 'category_id',
+        as: 'providers'
+      });
+    }
+  }
+
+  BillCategory.init(
+    {
       category_id: {
-        allowNull: false,
-        primaryKey: true,
-        type: Sequelize.UUID,
-        defaultValue: Sequelize.UUIDV4,
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
       },
       name: {
-        type: Sequelize.STRING(100),
+        type: DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
+        unique: true
       },
       description: {
-        type: Sequelize.TEXT,
+        type: DataTypes.TEXT,
+        allowNull: true
       },
       is_active: {
-        type: Sequelize.BOOLEAN,
+        type: DataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: true,
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.fn("NOW"),
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.fn("NOW"),
-      },
-    });
-  },
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("BillCategories");
-  },
+        defaultValue: true
+      }
+    },
+    {
+      sequelize,
+      modelName: 'BillCategory',
+      tableName: 'BillCategories',
+      timestamps: true
+    }
+  );
+
+  return BillCategory;
 };
