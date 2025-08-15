@@ -9,7 +9,6 @@ module.exports = (sequelize, DataTypes) => {
       User.hasMany(models.Transaction, { foreignKey: "user_id" });
       User.hasMany(models.BillTransaction, { foreignKey: "user_id" });
       User.hasMany(models.OAuthCredential, { foreignKey: "user_id" });
-      User.hasMany(models.Otp, { foreignKey: "user_id" });
     }
   }
 
