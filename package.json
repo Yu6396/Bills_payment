@@ -6,23 +6,24 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "migrate": "npx sequelize-cli db:migrate",
     "undo-migrate": "npx sequelize-cli db:migrate:undo",
     "create-database": "npx sequelize-cli db:create",
-    "seed": "npx sequelize-cli db:seed:all",
-    "undo-seed": "npx sequelize-cli db:seed:undo"
+    "undo-seed": "npx sequelize-cli db:seed:undo",
+    "migrate": "sequelize-cli db:migrate --env production",
+  "seed": "sequelize-cli db:seed:all --env production",
+  "postinstall": "npm run migrate"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Yu6396/Bills_payment.git"
+    "url": "git+https://github.com/Yu6396/DirectPay.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Yu6396/Bills_payment/issues"
+    "url": "https://github.com/Yu6396/DirectPay/issues"
   },
-  "homepage": "https://github.com/Yu6396/Bills_payment#readme",
+  "homepage": "https://github.com/Yu6396/DirectPay#readme",
   "dependencies": {
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
