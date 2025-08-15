@@ -1,34 +1,22 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('OAuthCredentials', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
-      provider: {
-        type: Sequelize.STRING
-      },
-      provider_id: {
-        type: Sequelize.STRING
-      },
+    await queryInterface.createTable('oauth_credentials', {
+      id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true, allowNull: false },
+      provider: { type: Sequelize.STRING, allowNull: false },
+      providerId: { type: Sequelize.STRING, allowNull: false },
       user_id: {
-        type: Sequelize.UUID
-      },
-      createdAt: {
+        type: Sequelize.UUID,
         allowNull: false,
-        type: Sequelize.DATE
+        references: { model: 'users', key: 'user_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
     });
   },
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('OAuthCredentials');
+  async down(queryInterface) {
+    await queryInterface.dropTable('oauth_credentials');
   }
 };

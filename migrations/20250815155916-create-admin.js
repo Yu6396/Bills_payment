@@ -1,49 +1,21 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Admins', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
-      first_name: {
-        type: Sequelize.STRING
-      },
-      last_name: {
-        type: Sequelize.STRING
-      },
-      email: {
-        type: Sequelize.STRING
-      },
-      password_hash: {
-        type: Sequelize.STRING
-      },
-      password_salt: {
-        type: Sequelize.STRING
-      },
-      address: {
-        type: Sequelize.STRING
-      },
-      phone_number: {
-        type: Sequelize.STRING
-      },
-      role: {
-        type: Sequelize.STRING
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
+    await queryInterface.createTable('admins', {
+      admin_id: { type: Sequelize.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true, allowNull: false },
+      first_name: { type: Sequelize.STRING, allowNull: false },
+      last_name: { type: Sequelize.STRING, allowNull: false },
+      email: { type: Sequelize.STRING, allowNull: false, unique: true },
+      password_hash: { type: Sequelize.STRING, allowNull: false },
+      password_salt: { type: Sequelize.STRING, allowNull: false },
+      address: { type: Sequelize.STRING },
+      phone_number: { type: Sequelize.STRING, allowNull: false },
+      role: { type: Sequelize.STRING, defaultValue: 'admin' },
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
     });
   },
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Admins');
+  async down(queryInterface) {
+    await queryInterface.dropTable('admins');
   }
 };

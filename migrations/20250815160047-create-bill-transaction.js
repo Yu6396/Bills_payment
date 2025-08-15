@@ -1,49 +1,39 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('BillTransactions', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
+    await queryInterface.createTable('bill_transactions', {
+      transaction_id: { type: Sequelize.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true, allowNull: false },
       user_id: {
-        type: Sequelize.UUID
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: 'users', key: 'user_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
       category_id: {
-        type: Sequelize.UUID
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: 'bill_categories', key: 'category_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
       provider_id: {
-        type: Sequelize.UUID
-      },
-      amount: {
-        type: Sequelize.DECIMAL
-      },
-      service_charge: {
-        type: Sequelize.DECIMAL
-      },
-      status: {
-        type: Sequelize.STRING
-      },
-      transaction_ref: {
-        type: Sequelize.STRING
-      },
-      payment_method: {
-        type: Sequelize.STRING
-      },
-      createdAt: {
+        type: Sequelize.UUID,
         allowNull: false,
-        type: Sequelize.DATE
+        references: { model: 'bill_providers', key: 'provider_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
+      amount: { type: Sequelize.DECIMAL(10,2), allowNull: false },
+      service_charge: { type: Sequelize.DECIMAL(10,2), defaultValue: 0.0 },
+      status: { type: Sequelize.ENUM('pending','success','failed'), defaultValue: 'pending' },
+      transaction_ref: { type: Sequelize.STRING(100), unique: true, allowNull: false },
+      payment_method: { type: Sequelize.STRING(50) },
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
     });
   },
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('BillTransactions');
+  async down(queryInterface) {
+    await queryInterface.dropTable('bill_transactions');
   }
 };

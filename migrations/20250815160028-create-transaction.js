@@ -1,40 +1,30 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Transactions', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
+    await queryInterface.createTable('transactions', {
+      transaction_id: { type: Sequelize.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true, allowNull: false },
       user_id: {
-        type: Sequelize.UUID
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: 'users', key: 'user_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
       wallet_id: {
-        type: Sequelize.UUID
-      },
-      amount: {
-        type: Sequelize.DECIMAL
-      },
-      status: {
-        type: Sequelize.STRING
-      },
-      payment_reference: {
-        type: Sequelize.STRING
-      },
-      createdAt: {
+        type: Sequelize.UUID,
         allowNull: false,
-        type: Sequelize.DATE
+        references: { model: 'wallets', key: 'wallet_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
+      amount: { type: Sequelize.DECIMAL(12,2), defaultValue: 0.0 },
+      status: { type: Sequelize.STRING },
+      payment_reference: { type: Sequelize.STRING },
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
     });
   },
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Transactions');
+  async down(queryInterface) {
+    await queryInterface.dropTable('transactions');
   }
 };

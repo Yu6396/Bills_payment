@@ -1,43 +1,25 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('BillProviders', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
+    await queryInterface.createTable('bill_providers', {
+      provider_id: { type: Sequelize.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true, allowNull: false },
       category_id: {
-        type: Sequelize.UUID
-      },
-      name: {
-        type: Sequelize.STRING
-      },
-      code: {
-        type: Sequelize.STRING
-      },
-      description: {
-        type: Sequelize.TEXT
-      },
-      service_charge: {
-        type: Sequelize.DECIMAL
-      },
-      is_active: {
-        type: Sequelize.BOOLEAN
-      },
-      createdAt: {
+        type: Sequelize.UUID,
         allowNull: false,
-        type: Sequelize.DATE
+        references: { model: 'bill_categories', key: 'category_id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
+      name: { type: Sequelize.STRING(150), allowNull: false },
+      code: { type: Sequelize.STRING(50), unique: true },
+      description: { type: Sequelize.TEXT },
+      service_charge: { type: Sequelize.DECIMAL(10,2), defaultValue: 0.0 },
+      is_active: { type: Sequelize.BOOLEAN, defaultValue: true },
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.fn('NOW'), allowNull: false },
     });
   },
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('BillProviders');
+  async down(queryInterface) {
+    await queryInterface.dropTable('bill_providers');
   }
 };
