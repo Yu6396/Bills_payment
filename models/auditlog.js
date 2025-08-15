@@ -1,34 +1,31 @@
-'use strict';
-const { Model } = require('sequelize');
+// models/AuditLog.js
+"use strict";
+const { Model } = require("sequelize");
 
 module.exports = (sequelize, DataTypes) => {
-  class AuditLog extends Model {}
+  class AuditLog extends Model {
+    static associate(models) {
+      AuditLog.belongsTo(models.Admin, { foreignKey: "admin_id" });
+    }
+  }
 
   AuditLog.init(
     {
       auditLog_id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
-      admin_id: {
-        type: DataTypes.UUID,
-        allowNull: false
-      },
-      action: {
-        type: DataTypes.STRING,
-        allowNull: true
-      },
-      resource: {
-        type: DataTypes.STRING,
-        allowNull: true
-      },
+      admin_id: { type: DataTypes.UUID, allowNull: false },
+      action: { type: DataTypes.STRING },
+      resource: { type: DataTypes.STRING },
+      timestamp: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     },
     {
       sequelize,
-      modelName: 'AuditLog',
-      tableName: 'AuditLogs',
-      timestamps: true 
+      modelName: "AuditLog",
+      tableName: "audit_logs",
+      underscored: true,
     }
   );
 

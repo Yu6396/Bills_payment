@@ -1,14 +1,12 @@
-'use strict';
-const { Model } = require('sequelize');
+// models/BillCategory.js
+"use strict";
+const { Model } = require("sequelize");
 
 module.exports = (sequelize, DataTypes) => {
   class BillCategory extends Model {
     static associate(models) {
-      // One category can have many bill providers
-      BillCategory.hasMany(models.BillProvider, {
-        foreignKey: 'category_id',
-        as: 'providers'
-      });
+      BillCategory.hasMany(models.BillProvider, { foreignKey: "category_id" });
+      BillCategory.hasMany(models.BillTransaction, { foreignKey: "category_id" });
     }
   }
 
@@ -17,28 +15,17 @@ module.exports = (sequelize, DataTypes) => {
       category_id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
-      name: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        unique: true
-      },
-      description: {
-        type: DataTypes.TEXT,
-        allowNull: true
-      },
-      is_active: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
-      }
+      name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+      description: { type: DataTypes.TEXT },
+      is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
     },
     {
       sequelize,
-      modelName: 'BillCategory',
-      tableName: 'BillCategories',
-      timestamps: true
+      modelName: "BillCategory",
+      tableName: "bill_categories",
+      underscored: true,
     }
   );
 

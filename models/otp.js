@@ -1,11 +1,14 @@
-'use strict';
-const { Model } = require('sequelize');
+// models/Otp.js
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Otp extends Model {
     static associate(models) {
-      // optionally associate with User by email if needed
+      Otp.belongsTo(models.User, { foreignKey: "user_id" });
     }
   }
+
   Otp.init(
     {
       id: {
@@ -13,26 +16,18 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      otp: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      expires_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      }
-     
+      user_id: { type: DataTypes.UUID, allowNull: false },
+      email: { type: DataTypes.STRING, allowNull: false },
+      otp: { type: DataTypes.STRING, allowNull: false },
+      expires_at: { type: DataTypes.DATE, allowNull: false },
     },
     {
       sequelize,
-      modelName: 'Otp',
-      tableName: 'Otps',
-      timestamps: true,
+      modelName: "Otp",
+      tableName: "otps",
+      underscored: true,
     }
   );
+
   return Otp;
 };

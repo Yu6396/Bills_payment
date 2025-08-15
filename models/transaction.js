@@ -1,43 +1,33 @@
-'use strict';
-const { Model } = require('sequelize');
+// models/Transaction.js
+"use strict";
+const { Model } = require("sequelize");
 
 module.exports = (sequelize, DataTypes) => {
-  class Transaction extends Model {}
+  class Transaction extends Model {
+    static associate(models) {
+      Transaction.belongsTo(models.User, { foreignKey: "user_id" });
+      Transaction.belongsTo(models.Wallet, { foreignKey: "wallet_id" });
+    }
+  }
 
   Transaction.init(
     {
       transaction_id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
-      user_id: {
-        type: DataTypes.UUID,
-        allowNull: false
-      },
-      wallet_id: {
-        type: DataTypes.UUID,
-        allowNull: false
-      },
-      amount: DataTypes.DECIMAL(12, 2),
-      status: DataTypes.STRING,
-      payment_reference: DataTypes.STRING,
-      createdAt: {
-        allowNull: false,
-        type: DataTypes.DATE
-      },
-      updatedAt: {
-        allowNull: false,
-        type: DataTypes.DATE
-      },
-      
-
+      user_id: { type: DataTypes.UUID, allowNull: false },
+      wallet_id: { type: DataTypes.UUID, allowNull: false },
+      amount: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0.0 },
+      status: { type: DataTypes.STRING },
+      payment_reference: { type: DataTypes.STRING },
     },
-
     {
       sequelize,
-      modelName: 'Transaction',
-      tableName: 'Transactions'
+      modelName: "Transaction",
+      tableName: "transactions",
+      underscored: true,
     }
   );
 
