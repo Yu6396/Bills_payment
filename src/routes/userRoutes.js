@@ -24,7 +24,7 @@ router.post("/create/user", validationmiddleware(createUserSchema), createUser);
 router.get("/verify/user/:email/:otp", verifyUser);
 router.post("/start/fund/account", UserAuthorization, startFundAccount);
 router.post("/login/user", loginUser);
-router.post("/complete-fund-account/:reference", UserAuthorization, completeFundAccount);
+router.get("/complete-fund-account/:reference", UserAuthorization, completeFundAccount);
 router.post("/complete/forget/password",validationmiddleware(completeForgetPasswordSchema), completeForgetPassword);
 router.patch("/update/profile", UserAuthorization, updateUserProfile);
 router.get("/resend-otp/:email", resendOtp);
