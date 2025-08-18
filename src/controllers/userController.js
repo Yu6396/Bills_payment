@@ -403,6 +403,59 @@ const completeFundAccount = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+const getUserWallet = async (req, res) => {
+  try {
+    const { user_id } = req.user;
+    const wallet = await Wallet.findOne({ where: { user_id } });
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
+    res.status(200).json({
+      message: "Wallet found successfully",
+      data: wallet,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
+const getUserProfile = async (req, res) => {
+  try {
+    const { user_id } = req.user;
+    const user = await User.findOne({ where: { user_id } });
+    if (!user) {
+      throw new Error("User not found");
+    }
+    res.status(200).json({
+      message: "User found successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
+const getUserTransactions = async (req, res) => {
+  try {
+    const { user_id } = req.user;
+    const transactions = await Transaction.findAll({ where: { user_id } });
+    if (!transactions) {
+      throw new Error("Transactions not found");
+    }
+    res.status(200).json({
+      message: "Transactions found successfully",
+      data: transactions,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
 
 module.exports = {
   createUser,
@@ -415,4 +468,7 @@ module.exports = {
   resendOtp,
   changePassword,
   startForgetPassword,
+  getUserWallet,
+  getUserProfile,
+  getUserTransactions
 };

@@ -11,7 +11,10 @@ const {
   resendOtp,
   changePassword,
   startForgetPassword,
-  startFundAccount
+  startFundAccount,
+  getUserWallet,
+  getUserProfile,
+  getUserTransactions
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
@@ -27,5 +30,8 @@ router.patch("/update/profile", UserAuthorization, updateUserProfile);
 router.get("/resend-otp/:email", resendOtp);
 router.post("/start-forget-password",validationmiddleware(verifyEmailSchema), startForgetPassword);
 router.post("/change-password", UserAuthorization, validationmiddleware(changePasswordSchema), changePassword);
+router.get("/get-user-wallet", UserAuthorization, getUserWallet);
+router.get("/get-user-profile", UserAuthorization, getUserProfile);
+router.get("/get-user-transactions", UserAuthorization, getUserTransactions);
 
 module.exports = router;
