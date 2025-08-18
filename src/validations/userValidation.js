@@ -10,9 +10,13 @@ const createUserSchema = Joi.object({
     .min(8)
     .required()
     .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")),
-  confirmPassword: Joi.ref("password"),
+  confirmPassword: Joi.string()
+    .valid(Joi.ref("password"))
+    .required()
+    .messages({ "any.only": "Passwords do not match" }),
   phone_number: Joi.string().required().min(11).max(11),
 });
+
 const verifyEmailSchema = Joi.object({
   email: Joi.string()
     .email({ minDomainSegments: 2, tlds: { allow: ["com", "net"] } })
