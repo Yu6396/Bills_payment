@@ -14,6 +14,7 @@ const { saltAndHashPassword } = require("../utils");
 const messages = require("../messages/index");
 
 const createUser = async (req, res) => {
+  console.log("got here");
   const {
     first_name,
     last_name,
@@ -34,6 +35,16 @@ const createUser = async (req, res) => {
 
     const { salt, hashedPassword } = await saltAndHashPassword(password);
     user_id = uuidv4();
+    console.log("User payload:", {
+      user_id: user_id,
+      first_name,
+      last_name,
+      email,
+      phone_number,
+      password_salt: salt,
+      password_hash: hashedPassword,
+    });
+
     await User.create({
       user_id: user_id,
       first_name,
@@ -323,7 +334,7 @@ const startFundAccount = async (req, res) => {
 
 const completeFundAccount = async (req, res) => {
   const { reference } = req.body;
-  const {user_id} = req.params
+  const { user_id } = req.params;
 
   if (!reference) {
     return res.status(400).json({ error: "Payment reference is required" });
@@ -355,7 +366,6 @@ const completeFundAccount = async (req, res) => {
     const data = verifyPaymentTransaction.data.data;
 
     const amountInNaira = data.amount / 100;
-
 
     const wallet = await Wallet.findOne({
       where: { user_id },

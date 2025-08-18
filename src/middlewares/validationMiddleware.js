@@ -4,6 +4,7 @@ function validationmiddleware(schema) {
       if (error) {
         return res.status(400).json(error.details.map((error) => error.message))
       }
+      console.log("validation passed")
       next()
     }
 }
