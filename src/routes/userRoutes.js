@@ -18,7 +18,7 @@ const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForge
 const { UserAuthorization } = require("../middlewares/authorization");
 
 router.post("/create/user", validationmiddleware(createUserSchema), createUser);
-router.get("/verify/user", verifyUser);
+router.get("/verify/user/:email/:otp", verifyUser);
 router.post("/start/fund/account", UserAuthorization, startFundAccount);
 router.post("/login/user", loginUser);
 router.post("/complete-fund-account", UserAuthorization, completeFundAccount);
