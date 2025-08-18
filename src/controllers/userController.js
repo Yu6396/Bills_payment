@@ -96,7 +96,7 @@ const verifyUser = async (req, res) => {
     }
 
     await Otp.destroy({ where: { email } });
-    await User.update({ email_verified: true }, { where: { email } });
+    await User.update({ is_verified: true }, { where: { email } });
     const Userinfo = await User.findOne({ where: { email } });
     await sendEmail(
       email,
@@ -333,7 +333,7 @@ const startFundAccount = async (req, res) => {
 };
 
 const completeFundAccount = async (req, res) => {
-  const { reference } = req.body;
+  const { reference } = req.params;
   const { user_id } = req.params;
 
   if (!reference) {
