@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: 'http://localhost:2025/auth/google/callback',
+  callbackURL: 'https://directpay-hcgw.onrender.com/auth/goggle/callback',
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     const provider = 'google';
