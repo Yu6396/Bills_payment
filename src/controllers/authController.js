@@ -10,16 +10,16 @@ exports.googleCallback = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.status(200).json({
-      message: 'Google login successful',
-      token,
-      user: {
-        user_id: user.user_id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name
-      }
-    });
+    // res.status(200).json({
+    //   message: 'Google login successful',
+    //   token,
+    //   user: {
+    //     user_id: user.user_id,
+    //     email: user.email,
+    //     first_name: user.first_name,
+    //     last_name: user.last_name
+    //   }
+    // });
 
     res.redirect(
       `http://localhost:5173/auth/success?token=${token}&email=${user.email}`
