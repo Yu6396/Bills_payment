@@ -21,8 +21,13 @@ exports.googleCallback = async (req, res) => {
         last_name: user.last_name
       }
     });
+
+    res.redirect(
+      `http://localhost:5173/auth/success?token=${token}&email=${user.email}`
+    );
   } catch (error) {
     console.error('Google callback error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+        res.redirect("http://localhost:5173/auth/failure");
+
   }
 };
