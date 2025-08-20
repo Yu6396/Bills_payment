@@ -5,9 +5,9 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class BillTransaction extends Model {
     static associate(models) {
-      BillTransaction.belongsTo(models.User, { foreignKey: "user_id" });
-      BillTransaction.belongsTo(models.BillCategory, { foreignKey: "category_id" });
-      BillTransaction.belongsTo(models.BillProvider, { foreignKey: "provider_id" });
+      BillTransaction.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
+      BillTransaction.belongsTo(models.BillCategory, { foreignKey: "category_id", as: "category" });
+      BillTransaction.belongsTo(models.BillProvider, { foreignKey: "provider_id", as: "provider" });
     }
   }
 

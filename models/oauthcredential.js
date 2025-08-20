@@ -5,7 +5,7 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class OAuthCredential extends Model {
     static associate(models) {
-      OAuthCredential.belongsTo(models.User, { foreignKey: "user_id" });
+      OAuthCredential.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
     }
   }
 

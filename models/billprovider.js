@@ -5,7 +5,7 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class BillProvider extends Model {
     static associate(models) {
-      BillProvider.belongsTo(models.BillCategory, { foreignKey: "category_id" });
+      BillProvider.belongsTo(models.BillCategory, { foreignKey: "category_id", as: "category" });
       BillProvider.hasMany(models.BillTransaction, { foreignKey: "provider_id" });
     }
   }

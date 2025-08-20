@@ -14,7 +14,7 @@ passport.use(new GoogleStrategy({
     
     const existingOAuth = await OAuthCredential.findOne({
       where: { provider, providerId },
-      include: User
+      include: [{ model: User, as: 'user' }]
     });
 
     if (existingOAuth) {
@@ -34,9 +34,10 @@ passport.use(new GoogleStrategy({
         first_name,
         last_name,
         email,
-        email_verified: true,
+        is_verified: true,
         password_hash: '',
         password_salt: ''
+        
       });
 
       

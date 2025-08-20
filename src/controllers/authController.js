@@ -1,4 +1,3 @@
-const { User, OAuthCredential, Wallet } = require('../../models');
 const jwt = require('jsonwebtoken');
 
 exports.googleCallback = async (req, res) => {
