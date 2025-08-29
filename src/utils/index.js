@@ -90,6 +90,6 @@ module.exports = {
   comparePassword,
   generateOtp,
   generateRandomPassword,
-  generateCode
+  generateCode,
   generateRef
 };
