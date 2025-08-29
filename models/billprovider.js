@@ -1,4 +1,3 @@
-// models/BillProvider.js
 "use strict";
 const { Model } = require("sequelize");
 
@@ -19,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       category_id: { type: DataTypes.UUID, allowNull: false },
       name: { type: DataTypes.STRING(150), allowNull: false },
-      code: { type: DataTypes.STRING(50), unique: true },
+      code: { type: DataTypes.STRING(50), unique: true }, 
       description: { type: DataTypes.TEXT },
       service_charge: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0.0 },
       is_active: { type: DataTypes.BOOLEAN, defaultValue: true },

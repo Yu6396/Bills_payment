@@ -1,4 +1,3 @@
-// models/BillTransaction.js
 "use strict";
 const { Model } = require("sequelize");
 
@@ -23,9 +22,20 @@ module.exports = (sequelize, DataTypes) => {
       provider_id: { type: DataTypes.UUID, allowNull: false },
       amount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       service_charge: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0.0 },
-      status: { type: DataTypes.ENUM("pending", "success", "failed"), defaultValue: "pending" },
+      total_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.0,
+      },
       transaction_ref: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+      vtpass_reference: { type: DataTypes.STRING(100) },
+      status: {
+        type: DataTypes.ENUM("pending", "success", "failed"),
+        defaultValue: "pending",
+      },
       payment_method: { type: DataTypes.STRING(50) },
+      request_payload: { type: DataTypes.JSONB }, 
+      customer_info: { type: DataTypes.STRING(100) }, // e.g. smartcard, meter, phone
     },
     {
       sequelize,

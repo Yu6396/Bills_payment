@@ -25,6 +25,31 @@ function generateOtp() {
   return Math.floor(Math.random() * 1000000).toString().padStart(6, "0")
 }
 
+function generateCode() {
+  const now = new Date();
+
+  // Format datetime part as YYYYMMDDHHmm
+  const pad = (n) => n.toString().padStart(2, "0");
+  const datePart =
+    now.getFullYear().toString() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    pad(now.getHours()) +
+    pad(now.getMinutes());
+
+  // Generate random alphanumeric token (10 chars)
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 10; i++) {
+    token += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  return datePart + token;
+}
+ function generateRef(){
+  return `txn_${Date.now()}_${Math.floor(Math.random() * 1000000)}`
+ }
+
 function generateRandomPassword(length = 12) {
   if (length < 8) {
     throw new Error(
@@ -65,4 +90,6 @@ module.exports = {
   comparePassword,
   generateOtp,
   generateRandomPassword,
+  generateCode
+  generateRef
 };
