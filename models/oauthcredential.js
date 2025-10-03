@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
       provider: { type: DataTypes.STRING, allowNull: false },
-      providerId: { type: DataTypes.STRING, allowNull: false },
+      providerId: { type: DataTypes.STRING, allowNull: false, field: "providerId" },
       user_id: { type: DataTypes.UUID, allowNull: false },
     },
     {

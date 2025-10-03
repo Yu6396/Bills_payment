@@ -29,12 +29,13 @@ module.exports = (sequelize, DataTypes) => {
       },
       transaction_ref: { type: DataTypes.STRING(100), allowNull: false, unique: true },
       vtpass_reference: { type: DataTypes.STRING(100) },
+       token: { type: DataTypes.STRING(200) },  // For electricity or PIN-based services
+      expiry_date: { type: DataTypes.DATE },  
       status: {
         type: DataTypes.ENUM("pending", "success", "failed"),
         defaultValue: "pending",
       },
       payment_method: { type: DataTypes.STRING(50) },
-      request_payload: { type: DataTypes.JSONB }, 
       customer_info: { type: DataTypes.STRING(100) }, // e.g. smartcard, meter, phone
     },
     {

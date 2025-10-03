@@ -25,7 +25,7 @@ function generateOtp() {
   return Math.floor(Math.random() * 1000000).toString().padStart(6, "0")
 }
 
-function generateCode() {
+function generateRequestId() {
   const now = new Date();
 
   // Format datetime part as YYYYMMDDHHmm
@@ -90,6 +90,6 @@ module.exports = {
   comparePassword,
   generateOtp,
   generateRandomPassword,
-  generateCode,
+  generateRequestId,
   generateRef
 };

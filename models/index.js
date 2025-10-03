@@ -5,15 +5,26 @@ const fs = require('fs');
 const path = require('path');
 const { Sequelize, DataTypes } = require('sequelize');
 
-const sequelize = new Sequelize(process.env.DB_URL, {
-  dialect: 'postgres',
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  },
-});
+// const sequelize = new Sequelize(process.env.DB_URL, {
+//   dialect: 'postgres',
+//   dialectOptions: {
+//     ssl: {
+//       require: true,
+//       rejectUnauthorized: false,
+//     },
+//   },
+// });
+  const sequelize = new Sequelize(
+    process.env.DB_NAME || 'billspayment',
+    process.env.DB_USER || 'postgres',
+    process.env.DB_PASSWORD || '5582710',
+    {
+      host: process.env.DB_HOST || '127.0.0.1',
+      port: process.env.DB_PORT || 5432,
+      dialect: 'postgres',
+      logging: false, // optional
+    }
+  );
 
 const db = {};
 const modelsDir = __dirname;

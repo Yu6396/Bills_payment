@@ -20,13 +20,13 @@ exports.googleCallback = async (req, res) => {
     //     last_name: user.last_name
     //   }
     // });
-
-    res.redirect(
-      `http://localhost:5173/auth/success?token=${token}&email=${user.email}`
-    );
+  res.status(200).json({
+      message: "Google login successful",
+      token,
+      user,
+    });
   } catch (error) {
-    console.error('Google callback error:', error);
-        res.redirect("http://localhost:5173/auth/failure");
-
+    console.error("Google callback error:", error);
+    res.status(500).json({ message: "Google login failed", error });
   }
 };
