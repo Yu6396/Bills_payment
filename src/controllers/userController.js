@@ -21,16 +21,13 @@ const createUser = async (req, res) => {
     email,
     phone_number,
     password,
-    confirmPassword,
+    
   } = req.body;
 
   try {
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       throw new Error(messages.USER_ALREADY_EXISTS);
-    }
-    if (password !== confirmPassword) {
-      throw new Error(messages.PASSWORD_NOT_MATCH);
     }
 
     const { salt, hashedPassword } = await saltAndHashPassword(password);
@@ -82,35 +79,41 @@ const createUser = async (req, res) => {
   }
 };
 
+// controller
 const verifyUser = async (req, res) => {
-  const { email, otp } = req.params;
+  const { email, otp } = req.body;
   try {
     const existingUser = await Otp.findOne({ where: { email, otp } });
 
     if (!existingUser) {
-      throw new Error(messages.INVALID_OTP);
+      throw new Error("Invalid OTP");
     }
 
     if (new Date() > existingUser.expired_at) {
-      throw new Error(messages.OTP_EXPIRED);
+      throw new Error("OTP has expired");
     }
 
     await Otp.destroy({ where: { email } });
     await User.update({ is_verified: true }, { where: { email } });
-    const Userinfo = await User.findOne({ where: { email } });
+
+    const userInfo = await User.findOne({ where: { email } });
     await sendEmail(
       email,
       "WELCOME HOME",
-      { name: `${Userinfo.first_name} ${Userinfo.last_name}` },
+      { name: `${userInfo.first_name} ${userInfo.last_name}` },
       "welcome"
     );
-    res.status(201).json({
-      message: "Otp verified, account created successfully",
+
+    return res.status(200).json({
+      message: "OTP verified successfully. Account activated.",
     });
   } catch (error) {
-    res.status(400).json({ message: error.message || "Internal server error" });
+    res.status(400).json({
+      message: error.message || "Internal server error",
+    });
   }
 };
+
 
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -138,9 +141,11 @@ const loginUser = async (req, res) => {
             message: err.message || "Something went wrong",
           });
         }
+         res.header("Access-Control-Expose-Headers", "Authorization");
         res.setHeader("authorization", token);
         res.status(200).json({
           message: "User logged in successfully",
+          token,
         });
       }
     );
@@ -151,7 +156,7 @@ const loginUser = async (req, res) => {
 };
 
 const resendOtp = async (req, res) => {
-  const { email } = req.params;
+  const { email } = req.body;
 
   try {
     const otpRecord = await Otp.findOne({ where: { email } });
@@ -164,14 +169,17 @@ const resendOtp = async (req, res) => {
       });
     }
 
+   
     const newOtp = generateOtp();
     const newExpiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
 
-    await Otp.delete({ where: { email } });
+    
+    await Otp.destroy({ where: { email } });
+
     await Otp.create({
       email,
       otp: newOtp,
-      expires_at: newExpiresAt,
+      expired_at: newExpiresAt,
     });
 
     await sendEmail(email, "Your OTP", { otp: newOtp }, "otp");
@@ -185,6 +193,7 @@ const resendOtp = async (req, res) => {
     });
   }
 };
+
 const changePassword = async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -226,7 +235,7 @@ const startForgetPassword = async (req, res) => {
   const { email } = req.body;
   try {
     const isEmailAvailable = await User.findOne({ where: { email } });
-    if (isEmpty(isEmailAvailable)) {
+    if (!isEmailAvailable) {
       throw new Error(messages.USER_NOT_FOUND);
     }
     const newOtp = generateOtp();
@@ -244,32 +253,38 @@ const startForgetPassword = async (req, res) => {
   }
 };
 const completeForgetPassword = async (req, res) => {
-  const { email, otp } = req.params;
-  const { newPassword, confirmPassword } = req.body;
+  const { newPassword, confirmPassword, email, otp } = req.body;
   try {
     const isEmailAvailable = await Otp.findOne({ where: { email, otp } });
 
-    if (isEmailAvailable.otp !== otp || isEmailAvailable.email !== email) {
-      throw new Error(messages.INVALID_OTP);
+    if (!isEmailAvailable) {
+      throw new Error("Invalid OTP");
     }
 
     if (isEmailAvailable.expires_at <= new Date()) {
-      throw new Error(messages.OTP_EXPIRED);
+      throw new Error("OTP expired");
     }
+
     if (newPassword !== confirmPassword) {
-      throw new Error(messages.PASSWORD_NOT_MATCH);
+      throw new Error("Passwords do not match");
     }
+
     const { salt, hashedPassword } = await saltAndHashPassword(newPassword);
+
+    // Correct usage of update
     await User.update(
-      { where: { email } },
       {
-        $set: {
-          password_hash: hashedPassword,
-          password_salt: salt,
-        },
+        password_hash: hashedPassword,
+        password_salt: salt,
+      },
+      {
+        where: { email },
       }
     );
-    await Otp.delete({ where: { email: email } });
+
+    // Correct usage of destroy
+    await Otp.destroy({ where: { email } });
+
     res.status(200).json({
       message: "Password changed successfully",
     });
@@ -279,6 +294,7 @@ const completeForgetPassword = async (req, res) => {
     });
   }
 };
+
 
 const updateUserProfile = async (req, res) => {
   try {

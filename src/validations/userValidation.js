@@ -8,12 +8,8 @@ const createUserSchema = Joi.object({
     .required(),
   password: Joi.string()
     .min(8)
-    .required()
-    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")),
-  confirmPassword: Joi.string()
-    .valid(Joi.ref("password"))
-    .required()
-    .messages({ "any.only": "Passwords do not match" }),
+    .required(),
+    // .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")),
   phone_number: Joi.string().required().min(11).max(11),
 });
 

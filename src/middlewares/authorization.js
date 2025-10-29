@@ -21,7 +21,7 @@ const UserAuthorization = (req, res, next) => {
     const checkDB = await User.findOne({ where: { email: decoded.email } });
 
     req.user={
-      id: checkDB.user_id,
+      user_id: checkDB.user_id,
       email: checkDB.email
     }
 
