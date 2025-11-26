@@ -14,7 +14,9 @@ const {
   startFundAccount,
   getUserWallet,
   getUserProfile,
-  getUserTransactions
+  getUserTransactions,
+  refreshTokens,
+  logoutUser
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
@@ -24,6 +26,8 @@ router.post("/create/user", validationmiddleware(createUserSchema), createUser);
 router.post("/verify/otp", verifyUser);
 router.post("/start/fund/account", UserAuthorization, startFundAccount);
 router.post("/login/user", loginUser);
+router.post("/refresh-token", refreshTokens);
+router.post("/logout", UserAuthorization, logoutUser);
 router.get("/complete-fund-account/:reference", UserAuthorization, completeFundAccount);
 router.post("/complete/forget/password", completeForgetPassword);
 router.patch("/update/profile", UserAuthorization, updateUserProfile);

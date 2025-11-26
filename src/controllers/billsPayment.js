@@ -86,7 +86,7 @@ async function debitWallet(user_id, amount) {
   try {
     const { provider_id, phone, variation_code, amount } = req.body;
     const user_id = req.user.id;
-
+     
     // Check provider
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {

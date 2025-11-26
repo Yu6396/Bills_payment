@@ -1,36 +1,39 @@
 const jwt = require("jsonwebtoken");
-const {User} = require("../../models");
+const {User, Session} = require("../../models");
 const {Admin} = require("../../models/admin");
 
-
-const UserAuthorization = (req, res, next) => {
-  const { authorization } = req.headers;
-
-  if (!authorization) {
-    return res.status(400).json({
-      message: "You are not authorized",
-    });
-  }
-  const token = authorization.split(" ")[1];
-  jwt.verify(token, process.env.JWT_SECRET, async function (err, decoded) {
-    if (err) {
-      return res.status(400).json({
-        message: "You are not authorized",
-      });
+const UserAuthorization = async (req, res, next) => {
+  try {
+    const token = req.cookies.session_token;
+    if (!token) {
+      return res.status(401).json({ message: "Not authenticated" });
     }
-    const checkDB = await User.findOne({ where: { email: decoded.email } });
-
-    req.user={
-      user_id: checkDB.user_id,
-      email: checkDB.email
+    const session = await Session.findOne({ where: { token } });
+    if (!session) {
+      return res.status(403).json({ message: "Invalid session" });
+    }
+    if (session.expires_at < new Date()) {
+      await session.destroy(); 
+      return res.status(403).json({ message: "Session expired" });
+    }
+    const user = await User.findByPk(session.user_id);
+    if (!user) {
+      await session.destroy(); // Clean orphaned session
+      return res.status(401).json({ message: "User not found" });
     }
 
-    req.params.user_id = checkDB.user_id;
-    req.params.email = checkDB.email;
+    req.user = user;
+    req.session = session;
+    req.params.user_id = user.user_id;
+    req.params.email = user.email;
 
     next();
-  });
+  } catch (err) {
+    console.error("Authorization error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
+
 
 const AdminAuthorization = async (req, res, next) => {
   try {

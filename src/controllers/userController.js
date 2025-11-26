@@ -1,7 +1,8 @@
 require("dotenv").config();
 const { generateOtp } = require("../utils");
-const { sequelize, User, Otp, Wallet, Transaction } = require("../../models");
+const { sequelize, User, Otp, Wallet, Transaction,RefreshToken,Session } = require("../../models");
 const bcrypt = require("bcrypt");
+const crypto = require('crypto');
 const { v4: uuidv4 } = require("uuid");
 const sendEmail = require("../services/emailService");
 const jwt = require("jsonwebtoken");
@@ -79,7 +80,7 @@ const createUser = async (req, res) => {
   }
 };
 
-// controller
+
 const verifyUser = async (req, res) => {
   const { email, otp } = req.body;
   try {
@@ -115,45 +116,95 @@ const verifyUser = async (req, res) => {
 };
 
 
-const loginUser = async (req, res) => {
+ const loginUser = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const checkIfUserExists = await User.findOne({ where: { email } });
-    if (!checkIfUserExists) {
-      throw new Error(messages.USER_NOT_FOUND);
-    }
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      checkIfUserExists.password_hash
-    );
-    if (!isPasswordValid) {
-      throw new Error(messages.INVALID_PASSWORD);
-    }
-    const payload = { email: checkIfUserExists.email, id: uuidv4() };
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(401).json({ message: 'User not found' });
 
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXP },
-      function (err, token) {
-        if (err) {
-          return res.status(400).json({
-            message: err.message || "Something went wrong",
-          });
-        }
-         res.header("Access-Control-Expose-Headers", "Authorization");
-        res.setHeader("authorization", token);
-        res.status(200).json({
-          message: "User logged in successfully",
-          token,
-        });
-      }
-    );
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(401).json({ message: 'Invalid Credentail' });
+
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); 
+    await Session.create({ token, user_id: user.user_id, expires_at: expiresAt });
+
+    res.cookie('session_token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ message: 'Login successful', user: { email: user.email, first_name: user.first_name } });
   } catch (error) {
-    console.error("Error creating user: ", error);
-    res.status(400).json({ message: error.message || "Bad Request" });
+    console.error(error);
+    res.status(500).json({ message: 'Login failed' });
   }
 };
+ const refreshTokens = async (req, res) => {
+  const refreshToken = req.cookies?.refresh_token;
+  if (!refreshToken)
+    return res.status(401).json({ message: "No refresh token provided" });
+
+  try {
+    // Verify token signature
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Check DB
+    const stored = await RefreshToken.findOne({
+      where: { token: refreshToken, revoked: false },
+    });
+
+    if (!stored || stored.expires_at < new Date()) {
+      return res.status(401).json({ message: "Invalid or expired refresh token" });
+    }
+
+    // Revoke old token
+    stored.revoked = true;
+    await stored.save();
+
+    // Create new tokens
+    const payload = { user_id: decoded.user_id, email: decoded.email };
+    const newAccessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
+    const newRefreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+
+    // Save new refresh token
+    await RefreshToken.create({
+      user_id: decoded.user_id,
+      token: newRefreshToken,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    // Send cookies
+    res.cookie("access_token", newAccessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refresh_token", newRefreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ message: "Tokens refreshed successfully" });
+  } catch (error) {
+    console.error("Refresh error:", error);
+    res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+};
+
+const logoutUser = async (req, res) => {
+  const token = req.cookies.session_token;
+  if (token) await Session.destroy({ where: { token } });
+
+  res.clearCookie('session_token');
+  res.json({ message: 'Logged out successfully' });
+};
+
 
 const resendOtp = async (req, res) => {
   const { email } = req.body;
@@ -439,21 +490,34 @@ const getUserWallet = async (req, res) => {
 
 const getUserProfile = async (req, res) => {
   try {
-    const { user_id } = req.user;
-    const user = await User.findOne({ where: { user_id } });
-    if (!user) {
-      throw new Error("User not found");
+    // Ensure middleware injected the user info
+    if (!req.user?.user_id) {
+      return res.status(401).json({
+        message: "Unauthorized. Please log in again.",
+      });
     }
+
+    const user = await User.findOne({
+      where: { user_id: req.user.user_id },
+      attributes: { exclude: ["password_hash"] }, // don’t expose password
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     res.status(200).json({
       message: "User found successfully",
       data: user,
     });
   } catch (error) {
+    console.error("getUserProfile error:", error);
     res.status(400).json({
       message: error.message || "Something went wrong",
     });
   }
 };
+
 
 const getUserTransactions = async (req, res) => {
   try {
@@ -486,5 +550,7 @@ module.exports = {
   startForgetPassword,
   getUserWallet,
   getUserProfile,
-  getUserTransactions
+  getUserTransactions,
+  refreshTokens,
+  logoutUser
 };
