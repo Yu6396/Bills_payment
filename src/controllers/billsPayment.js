@@ -28,7 +28,7 @@ async function debitWallet(user_id, amount) {
   const payAirtime = async (req, res) => {
   try {
     const { provider_id, phone, amount } = req.body;
-    const user_id = req.user.id;
+    const {user_id} = req.params
 
     // Check provider
     const provider = await BillProvider.findByPk(provider_id);
@@ -85,7 +85,7 @@ async function debitWallet(user_id, amount) {
   const payData = async (req, res) => {
   try {
     const { provider_id, phone, variation_code, amount } = req.body;
-    const user_id = req.user.id;
+    const {user_id }= req.params
      
     // Check provider
     const provider = await BillProvider.findByPk(provider_id);
@@ -143,7 +143,7 @@ async function debitWallet(user_id, amount) {
   const payElectricity = async (req, res) => {
   try {
     const { provider_id, meter_no, type, amount, phone } = req.body;
-    const user_id = req.user.id;
+    const {user_id} = req.params;
 
     // Check provider
     const provider = await BillProvider.findByPk(provider_id);
@@ -203,7 +203,7 @@ async function debitWallet(user_id, amount) {
   const payTV = async (req, res) => {
   try {
     const { provider_id, smart_card, variation_code, amount, phone } = req.body;
-    const user_id = req.user.id;
+    const {user_id} = req.params;
 
     // Check provider
     const provider = await BillProvider.findByPk(provider_id);
