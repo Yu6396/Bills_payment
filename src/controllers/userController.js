@@ -13,69 +13,101 @@ const {
 const { TRANSACTION_STATUS } = require("../../constants/data");
 const { saltAndHashPassword } = require("../utils");
 const messages = require("../messages/index");
+const { Op } = require("sequelize");
+
+const normalizePhone = (phone = "") => {
+  const trimmed = phone.trim();
+  if (trimmed.startsWith("0")) {
+    return `234${trimmed.slice(1)}`;
+  }
+  return trimmed;
+};
 
 const createUser = async (req, res) => {
-  console.log("got here");
-  const {
-    first_name,
-    last_name,
-    email,
-    phone_number,
-    password,
-    
-  } = req.body;
+  const { first_name, last_name, email, phone_number, password } = req.body;
+
+  const transaction = await sequelize.transaction();
 
   try {
-    const existingUser = await User.findOne({ where: { email } });
+    const normalizedPhone = normalizePhone(phone_number);
+
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [
+          { email },
+          { phone_number: normalizedPhone }
+        ]
+      },
+      transaction
+    });
+
     if (existingUser) {
-      throw new Error(messages.USER_ALREADY_EXISTS);
+      if (existingUser.email === email) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+      if (existingUser.phone_number === normalizedPhone) {
+        return res.status(409).json({ message: "Phone number already registered" });
+      }
     }
 
     const { salt, hashedPassword } = await saltAndHashPassword(password);
-    user_id = uuidv4();
-    console.log("User payload:", {
-      user_id: user_id,
-      first_name,
-      last_name,
-      email,
-      phone_number,
-      password_salt: salt,
-      password_hash: hashedPassword,
-    });
 
+    const user_id = uuidv4();
+
+   
     await User.create({
-      user_id: user_id,
+      user_id,
       first_name,
       last_name,
       email,
-      phone_number,
+      phone_number: normalizedPhone,
       password_salt: salt,
       password_hash: hashedPassword,
-    });
+    }, { transaction });
+
 
     await Wallet.create({
       wallet_id: uuidv4(),
-      user_id: user_id,
+      user_id,
       balance: 0,
-    });
+    }, { transaction });
 
+   
     const otpCode = generateOtp();
     const expiresAt = new Date(Date.now() + 1 * 60 * 1000);
+
     await Otp.create({
       email,
       otp: otpCode,
       expires_at: expiresAt,
-    });
-    await sendEmail(email, "Verify your otp", { otp: otpCode }, "otp");
+    }, { transaction });
 
-    return res.status(200).json({
-      message: "Verify Otp sent to your email",
+   
+    await transaction.commit();
+
+   
+    await sendEmail(email, "Verify your OTP", { otp: otpCode }, "otp");
+
+    return res.status(201).json({
+      message: "Verification OTP sent to your email",
     });
+
   } catch (error) {
-    console.error("Error creating user: ", error.message || error);
+    await transaction.rollback();
+
+    // Handle DB unique constraint (race condition safety)
+    if (error.name === "SequelizeUniqueConstraintError") {
+      const field = error.errors[0]?.path;
+      return res.status(409).json({
+        message: `${field.replace("_", " ")} already exists`
+      });
+    }
+
+    console.error("Create user error:", error);
+
     return res.status(400).json({
       message: "Failed to create user",
-      error: error.message || "Unknown error",
+      error: error.message,
     });
   }
 };
@@ -222,7 +254,7 @@ const resendOtp = async (req, res) => {
 
    
     const newOtp = generateOtp();
-    const newExpiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+    const newExpiresAt = new Date(Date.now() + 1 * 60 * 1000); // 3 minutes
 
     
     await Otp.destroy({ where: { email } });
@@ -350,31 +382,38 @@ const completeForgetPassword = async (req, res) => {
 const updateUserProfile = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const { first_name, last_name, phone_number, email } = req.body;
-    const checkIfUserExists = await User.findOne({ where: { user_id } });
-    if (!checkIfUserExists) {
-      throw new Error(messages.USER_NOT_FOUND);
+    const { first_name, last_name } = req.body;
+
+    const user = await User.findOne({ where: { user_id } });
+
+    if (!user) {
+      return res.status(404).json({
+        message: messages.USER_NOT_FOUND,
+      });
     }
+
     await User.update(
-      { where: { user_id } },
       {
-        $set: {
-          first_name,
-          last_name,
-          phone_number,
-          email,
-        },
+        first_name,
+        last_name,
+      },
+      {
+        where: { user_id },
       }
     );
-    res.status(200).json({
+
+    return res.status(200).json({
       message: "Profile updated successfully",
     });
   } catch (error) {
-    res.status(400).json({
-      message: error.message,
+    console.error("Update profile error:", error);
+
+    return res.status(400).json({
+      message: "Failed to update profile",
     });
   }
 };
+
 const startFundAccount = async (req, res) => {
   try {
     const { amount } = req.body;
@@ -536,6 +575,136 @@ const getUserTransactions = async (req, res) => {
     });
   }
 };
+const requestEmailChange = async (req, res) => {
+  const { email } = req.body;
+  const user_id = req.user.user_id;
+
+  const transaction = await sequelize.transaction();
+  try {
+    const exists = await User.findOne({ where: { email }, transaction });
+    if (exists){
+      throw new Error("Email already exists");
+    }
+
+    const user = await User.findByPk(user_id, { transaction });
+    if (!user){
+      throw new Error("User not found");
+    };
+
+    // Save pending email
+    await user.update({ pending_email: email }, { transaction });
+
+    const otpCode = generateOtp();
+    const expiresAt = new Date(Date.now() + 60 * 1000);
+    await Otp.create({ email, otp: otpCode, expires_at: expiresAt }, { transaction });
+
+    await transaction.commit();
+    await sendEmail(email, "Verify your new email", { otp: otpCode }, "otp");
+
+    return res.status(200).json({ message: "OTP sent to new email" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    return res.status(500).json({ message: error.message || "Failed to request email change" });
+  }
+};
+const verifyEmailChange = async (req, res) => {
+  const { otp } = req.body;
+  const user_id = req.user.user_id;
+
+  const transaction = await sequelize.transaction();
+  try {
+    const user = await User.findByPk(user_id, { transaction });
+    if (!user || !user.pending_email){
+      throw new Error("User not found");
+    } 
+      
+
+    const otpRecord = await Otp.findOne({
+      where: { email: user.pending_email, otp },
+      transaction
+    });
+    if (!otpRecord || otpRecord.expires_at < new Date()){
+      throw new Error("Invalid or expired OTP");
+    }
+      
+
+    await user.update(
+      { email: user.pending_email, pending_email: null, is_verified: true },
+      { transaction }
+    );
+    await otpRecord.destroy({ transaction });
+
+    await transaction.commit();
+    return res.status(200).json({ message: "Email updated successfully" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    return res.status(500).json({ message: error.message || "Failed to verify email change" });
+  }
+};
+const requestPhoneChange = async (req, res) => {
+  const { phone_number } = req.body;
+  const user_id = req.user.user_id;
+  const normalizedPhone = normalizePhone(phone_number);
+
+  const transaction = await sequelize.transaction();
+  try {
+    const exists = await User.findOne({ where: { phone_number: normalizedPhone }, transaction });
+    if (exists){
+      throw new Error("Phone number already exists");
+    }
+
+    const user = await User.findByPk(user_id, { transaction });
+    if (!user) {
+      throw new Error("User not found");}
+
+    await user.update({ pending_phone_number: normalizedPhone }, { transaction });
+
+    const otpCode = generateOtp();
+    const expiresAt = new Date(Date.now() +   60 * 1000);
+    await Otp.create({ email: user.email, otp: otpCode, expires_at: expiresAt }, { transaction });
+
+    await transaction.commit();
+    await sendEmail(user.email, "Verify your new phone number", { otp: otpCode }, "otp");
+
+    return res.status(200).json({ message: "OTP sent to verify new phone number" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    return res.status(500).json({ message: error.message || "Failed to request phone change" });
+  }
+};
+const verifyPhoneChange = async (req, res) => {
+  const { otp } = req.body;
+  const user_id = req.user.user_id;
+
+  const transaction = await sequelize.transaction();
+  try {
+    const user = await User.findByPk(user_id, { transaction });
+    if (!user || !user.pending_phone_number){
+      throw new Error("User not found");
+    }
+    
+
+    const otpRecord = await Otp.findOne({ where: { email: user.email, otp }, transaction });
+    if (!otpRecord || otpRecord.expires_at < new Date()){
+      throw new Error("Invalid or expired OTP");
+    }
+      
+
+    await user.update({ phone_number: user.pending_phone_number, pending_phone_number: null }, { transaction });
+    await otpRecord.destroy({ transaction });
+
+    await transaction.commit();
+    return res.status(200).json({ message: "Phone number updated successfully" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    return res.status(500).json({ message: error.message || "Failed to verify phone change" });
+  }
+};
+
 
 module.exports = {
   createUser,
@@ -552,5 +721,9 @@ module.exports = {
   getUserProfile,
   getUserTransactions,
   refreshTokens,
-  logoutUser
+  logoutUser,
+  requestEmailChange,
+  verifyEmailChange,
+  requestPhoneChange,
+  verifyPhoneChange
 };

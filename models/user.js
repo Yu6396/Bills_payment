@@ -26,6 +26,9 @@ module.exports = (sequelize, DataTypes) => {
       password_salt: { type: DataTypes.STRING, allowNull: false },
       phone_number: { type: DataTypes.STRING(20), unique: true },
       is_verified: { type: DataTypes.BOOLEAN, defaultValue: false },
+      pending_email: { type: DataTypes.STRING(150), allowNull: true ,},
+      is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+      pending_phone_number: { type: DataTypes.STRING(20), allowNull: true },
     },
     {
       sequelize,

@@ -16,7 +16,11 @@ const {
   getUserProfile,
   getUserTransactions,
   refreshTokens,
-  logoutUser
+  logoutUser,
+  requestEmailChange,
+  verifyEmailChange,
+  requestPhoneChange,
+  verifyPhoneChange
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
@@ -29,7 +33,7 @@ router.post("/login/user", loginUser);
 router.post("/refresh-token", refreshTokens);
 router.post("/logout", UserAuthorization, logoutUser);
 router.get("/complete-fund-account/:reference", UserAuthorization, completeFundAccount);
-router.post("/complete/forget/password", completeForgetPassword);
+router.post("/complete/forget/password",  completeForgetPassword);
 router.patch("/update/profile", UserAuthorization, updateUserProfile);
 router.post("/resend-otp", resendOtp);
 router.post("/start-forget-password",validationmiddleware(verifyEmailSchema), startForgetPassword);
@@ -37,5 +41,10 @@ router.post("/change-password", UserAuthorization, validationmiddleware(changePa
 router.get("/get-user-wallet", UserAuthorization, getUserWallet);
 router.get("/get-user-profile", UserAuthorization, getUserProfile);
 router.get("/get-user-transactions", UserAuthorization, getUserTransactions);
+router.patch("/request/email/change", UserAuthorization, requestEmailChange);
+router.post("/verify/email/change", UserAuthorization, verifyEmailChange);
+router.patch("/request/phone/change", UserAuthorization, requestPhoneChange);
+router.post("/verify/phone/change", UserAuthorization, verifyPhoneChange);
+
 
 module.exports = router;

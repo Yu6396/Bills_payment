@@ -14,7 +14,7 @@ async function debitWallet(user_id, amount) {
       throw new Error("Insufficient balance");
     }
 
-    // Deduct amount
+ 
     wallet.balance = Number(wallet.balance) - Number(amount);
 
     await wallet.save(); // save the updated balance
@@ -36,13 +36,13 @@ async function debitWallet(user_id, amount) {
       return res.status(404).json({ message: "Provider not found" });
     }
 
-    // Debit wallet
+    
     await debitWallet(user_id, amount);
 
     // Generate transaction reference
     const requestId = generateRequestId();
 
-    // Create transaction record
+   
     const transaction = await BillTransaction.create({
       user_id,
       category_id: provider.category_id,
@@ -87,19 +87,19 @@ async function debitWallet(user_id, amount) {
     const { provider_id, phone, variation_code, amount } = req.body;
     const {user_id }= req.params
      
-    // Check provider
+    
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
 
-    // Debit wallet
+    
     await debitWallet(user_id, amount);
 
     // Generate transaction reference
     const requestId = generateRequestId();
 
-    // Create transaction record
+    
     const transaction = await BillTransaction.create({
       user_id,
       category_id: provider.category_id,
@@ -145,19 +145,19 @@ async function debitWallet(user_id, amount) {
     const { provider_id, meter_no, type, amount, phone } = req.body;
     const {user_id} = req.params;
 
-    // Check provider
+    
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
 
-    // Debit wallet
+    
     await debitWallet(user_id, amount);
 
     // Generate transaction reference
     const requestId = generateRequestId();
 
-    // Create transaction record
+    
     const transaction = await BillTransaction.create({
       user_id,
       category_id: provider.category_id,
@@ -205,19 +205,19 @@ async function debitWallet(user_id, amount) {
     const { provider_id, smart_card, variation_code, amount, phone } = req.body;
     const {user_id} = req.params;
 
-    // Check provider
+    
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
 
-    // Debit wallet
+    
     await debitWallet(user_id, amount);
 
-    // Generate requestId
+    
     const requestId = generateRequestId();
 
-    // Create transaction record
+   
     const transaction = await BillTransaction.create({
       user_id,
       category_id: provider.category_id,
@@ -295,5 +295,5 @@ async function debitWallet(user_id, amount) {
 
 
 
-  // TODO: payElectricity, payTV similar to above...
+  
 module.exports = { payAirtime, payData, payElectricity, payTV, requeryTransaction };
