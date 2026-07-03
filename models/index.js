@@ -15,7 +15,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 //   },
 // });
   const sequelize = new Sequelize(
-    process.env.DB_NAME || 'billspayment',
+    process.env.DB_NAME || 'directPay',
     process.env.DB_USER || 'postgres',
     process.env.DB_PASSWORD || '5582710',
     {

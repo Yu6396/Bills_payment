@@ -4,7 +4,11 @@ const vtpass = require('../services/vtPassServices');
 
 async function syncVTpassProductsOptimized() {
   try {
+    console.log("Starting VTPass product sync...");
+
     const providers = await BillProvider.findAll();
+    console.log(`Found ${providers.length} providers`);
+    
 
     await Promise.allSettled(
       providers.map(async (provider) => {

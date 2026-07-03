@@ -12,7 +12,8 @@
     "migrate": "sequelize-cli db:migrate --env production",
     "seed": "sequelize-cli db:seed:all --env production",
     "postinstall": "npm run migrate",
-    "refund-cron": "node scripts/refundCron.js"
+    "refund-cron": "node src/scripts/refundCron.js",
+    "sync:products": "node src/jobs/vtpassProductJob.js"
   },
   "repository": {
     "type": "git",
@@ -39,7 +40,7 @@
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.1",
-    "node-cron": "^4.2.1",
+    "node-cron": "^4.5.0",
     "nodemailer": "^7.0.4",
     "nodemon": "^3.1.10",
     "passport": "^0.7.0",

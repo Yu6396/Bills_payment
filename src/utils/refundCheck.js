@@ -1,7 +1,7 @@
 // cron/refundCheck.js
 require("dotenv").config();
-const { BillTransaction, User, RefundLog } = require("../models");
-const { requery } = require("../services/vtpass");
+const { BillTransaction, User, RefundLog } = require("../../models");
+const { requery } = require("../services/vtPassServices");
 
 async function checkAndRefundFailedTransactions() {
   console.log("🔄 Checking failed/pending transactions...");

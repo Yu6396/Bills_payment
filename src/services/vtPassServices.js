@@ -3,8 +3,8 @@ const axios = require("axios");
 const vtpass = axios.create({
   baseURL: process.env.VTPASS_BASE_URL,
   headers: {
-    "api-key": "ef861ea31e61cdbbf905f99270ea0f58",
-    "secret-key": "SK_775df0f27ae66cf3a294e46733a833b31260b6606aa",
+    "api-key": process.env.VTPASS_API_KEY,
+    "secret-key": process.env.VTPASS_SECRET_KEY,
     "Content-Type": "application/json",
 
   },
