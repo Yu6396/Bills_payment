@@ -111,6 +111,43 @@ const createUser = async (req, res) => {
     });
   }
 };
+const checkAvailability = async (req, res) => {
+  try {
+    const { email, phone_number } = req.body;
+
+    const result = {};
+
+    if (email) {
+      const emailExists = await User.findOne({ where: { email } });
+
+      result.emailAvailable = !emailExists;
+      result.emailMessage = emailExists
+        ? "Email already registered"
+        : null;
+    }
+
+    if (phone_number) {
+      const phoneExists = await User.findOne({
+        where: {
+          phone_number: normalizePhone(phone_number),
+        },
+      });
+
+      result.phoneAvailable = !phoneExists;
+      result.phoneMessage = phoneExists
+        ? "Phone number already registered"
+        : null;
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Unable to check availability",
+    });
+  }
+};
 
 
 const verifyUser = async (req, res) => {
@@ -122,7 +159,7 @@ const verifyUser = async (req, res) => {
       throw new Error("Invalid OTP");
     }
 
-    if (new Date() > existingUser.expired_at) {
+    if (new Date() > existingUser.expires_at) {
       throw new Error("OTP has expired");
     }
 
@@ -168,7 +205,7 @@ const verifyUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ message: 'Login successful', user: { email: user.email, first_name: user.first_name } });
+    res.json({ message: 'Login successful',token:token, user: { user_id: user.user_id,email: user.email, first_name: user.first_name } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Login failed' });
@@ -262,7 +299,7 @@ const resendOtp = async (req, res) => {
     await Otp.create({
       email,
       otp: newOtp,
-      expired_at: newExpiresAt,
+      expires_at: newExpiresAt,
     });
 
     await sendEmail(email, "Your OTP", { otp: newOtp }, "otp");
@@ -710,6 +747,7 @@ module.exports = {
   createUser,
   verifyUser,
   startFundAccount,
+
   loginUser,
   completeForgetPassword,
   updateUserProfile,
@@ -725,5 +763,6 @@ module.exports = {
   requestEmailChange,
   verifyEmailChange,
   requestPhoneChange,
-  verifyPhoneChange
+  verifyPhoneChange,
+  checkAvailability
 };

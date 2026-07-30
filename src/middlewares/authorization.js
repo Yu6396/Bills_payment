@@ -4,7 +4,7 @@ const {Admin} = require("../../models/admin");
 
 const UserAuthorization = async (req, res, next) => {
   try {
-    const token = req.cookies.session_token;
+    const token = req.cookies.session_token || req.headers.authorization?.replace("Bearer ", "");
     if (!token) {
       return res.status(401).json({ message: "Not authenticated" });
     }

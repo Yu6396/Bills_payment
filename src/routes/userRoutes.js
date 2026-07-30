@@ -20,14 +20,17 @@ const {
   requestEmailChange,
   verifyEmailChange,
   requestPhoneChange,
-  verifyPhoneChange
+  verifyPhoneChange,
+  checkAvailability
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
 const { UserAuthorization } = require("../middlewares/authorization");
 
 router.post("/create/user", validationmiddleware(createUserSchema), createUser);
+
 router.post("/verify/otp", verifyUser);
+router.post("/check/availability", checkAvailability);
 router.post("/start/fund/account", UserAuthorization, startFundAccount);
 router.post("/login/user", loginUser);
 router.post("/refresh-token", refreshTokens);
