@@ -2,38 +2,59 @@ const jwt = require("jsonwebtoken");
 const {User, Session} = require("../../models");
 const {Admin} = require("../../models/admin");
 
+
 const UserAuthorization = async (req, res, next) => {
   try {
-    const token = req.cookies.session_token || req.headers.authorization?.replace("Bearer ", "");
-    if (!token) {
-      return res.status(401).json({ message: "Not authenticated" });
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "Not authenticated",
+      });
     }
-    const session = await Session.findOne({ where: { token } });
-    if (!session) {
-      return res.status(403).json({ message: "Invalid session" });
+
+    const token = authHeader.split(" ")[1];
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
+    } catch (err) {
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).json({
+          message: "Token expired",
+        });
+      }
+
+      return res.status(401).json({
+        message: "Invalid token",
+      });
     }
-    if (session.expires_at < new Date()) {
-      await session.destroy(); 
-      return res.status(403).json({ message: "Session expired" });
-    }
-    const user = await User.findByPk(session.user_id);
+
+    const user = await User.findByPk(decoded.user_id);
+
     if (!user) {
-      await session.destroy(); // Clean orphaned session
-      return res.status(401).json({ message: "User not found" });
+      return res.status(401).json({
+        message: "User not found",
+      });
     }
-    
 
     req.user = user;
-    req.session = session;
-    req.params.user_id = user.user_id;
-    req.params.email = user.email;
 
     next();
   } catch (err) {
     console.error("Authorization error:", err);
-    return res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
+
+
 
 
 const AdminAuthorization = async (req, res, next) => {

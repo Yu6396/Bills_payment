@@ -10,7 +10,7 @@ const intializePayment = async (email, amount) => {
       "Content-Type": "application/json",
     },
     data: {
-      email: email,
+      email,
       amount: amount * 100,
       currency: "NGN",
     },

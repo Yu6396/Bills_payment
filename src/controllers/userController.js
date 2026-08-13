@@ -1,8 +1,7 @@
 require("dotenv").config();
 const { generateOtp } = require("../utils");
-const { sequelize, User, Otp, Wallet, Transaction,RefreshToken,Session } = require("../../models");
+const { sequelize, User, Otp, Wallet, Transaction } = require("../../models");
 const bcrypt = require("bcrypt");
-const crypto = require('crypto');
 const { v4: uuidv4 } = require("uuid");
 const sendEmail = require("../services/emailService");
 const jwt = require("jsonwebtoken");
@@ -144,7 +143,11 @@ const checkAvailability = async (req, res) => {
     console.error(error);
 
     return res.status(500).json({
-      message: "Unable to check availability",
+      emilAvailable: result.emailAvailable,
+      phoneAvailable: result.phoneAvailable,
+      emailMessage: result.emailMessage,
+      phoneMessage: result.phoneMessage,
+      message: "Failed to check availability",
     });
   }
 };
@@ -185,94 +188,151 @@ const verifyUser = async (req, res) => {
 };
 
 
- const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+const createPin = async (req, res) => {
   try {
-    const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(401).json({ message: 'User not found' });
+    const { pin } = req.body;
 
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ message: 'Invalid Credentail' });
-
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); 
-    await Session.create({ token, user_id: user.user_id, expires_at: expiresAt });
-
-    res.cookie('session_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({ message: 'Login successful',token:token, user: { user_id: user.user_id,email: user.email, first_name: user.first_name } });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Login failed' });
-  }
-};
- const refreshTokens = async (req, res) => {
-  const refreshToken = req.cookies?.refresh_token;
-  if (!refreshToken)
-    return res.status(401).json({ message: "No refresh token provided" });
-
-  try {
-    // Verify token signature
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
-    // Check DB
-    const stored = await RefreshToken.findOne({
-      where: { token: refreshToken, revoked: false },
-    });
-
-    if (!stored || stored.expires_at < new Date()) {
-      return res.status(401).json({ message: "Invalid or expired refresh token" });
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({
+        message: "PIN must be exactly 4 digits",
+      });
     }
 
-    // Revoke old token
-    stored.revoked = true;
-    await stored.save();
+    const user = req.user;
 
-    // Create new tokens
-    const payload = { user_id: decoded.user_id, email: decoded.email };
-    const newAccessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
-    const newRefreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+    if (user.pin_hash) {
+      return res.status(400).json({
+        message: "PIN already exists. Use change PIN instead",
+      });
+    }
 
-    // Save new refresh token
-    await RefreshToken.create({
-      user_id: decoded.user_id,
-      token: newRefreshToken,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    const pinHash = await bcrypt.hash(pin, 10);
+
+    user.pin_hash = pinHash;
+    await user.save();
+
+    return res.status(200).json({
+      message: "PIN created successfully",
     });
-
-    // Send cookies
-    res.cookie("access_token", newAccessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie("refresh_token", newRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.status(200).json({ message: "Tokens refreshed successfully" });
   } catch (error) {
-    console.error("Refresh error:", error);
-    res.status(401).json({ message: "Invalid or expired refresh token" });
+    console.error("Create PIN error:", error);
+
+    return res.status(500).json({
+      message: "Failed to create PIN",
+    });
+  }
+};
+const changePin = async (req, res) => {
+  try {
+    const { currentPin, newPin } = req.body;
+
+    if (!currentPin || !/^\d{4}$/.test(currentPin)) {
+      return res.status(400).json({
+        message: "Current PIN must be exactly 4 digits",
+      });
+    }
+
+    if (!newPin || !/^\d{4}$/.test(newPin)) {
+      return res.status(400).json({
+        message: "New PIN must be exactly 4 digits",
+      });
+    }
+
+    const user = req.user;
+
+    if (!user.pin_hash) {
+      return res.status(400).json({
+        message: "No PIN exists. Create a PIN first",
+      });
+    }
+
+    const isCurrentPinValid = await bcrypt.compare(
+      currentPin,
+      user.pin_hash
+    );
+
+    if (!isCurrentPinValid) {
+      return res.status(401).json({
+        message: "Current PIN is incorrect",
+      });
+    }
+
+    if (currentPin === newPin) {
+      return res.status(400).json({
+        message: "New PIN must be different from current PIN",
+      });
+    }
+
+    const newPinHash = await bcrypt.hash(newPin, 10);
+
+    user.pin_hash = newPinHash;
+    await user.save();
+
+    return res.status(200).json({
+      message: "PIN changed successfully",
+    });
+  } catch (error) {
+    console.error("Change PIN error:", error);
+
+    return res.status(500).json({
+      message: "Failed to change PIN",
+    });
   }
 };
 
-const logoutUser = async (req, res) => {
-  const token = req.cookies.session_token;
-  if (token) await Session.destroy({ where: { token } });
+const loginUser = async (req, res) => {
+  const { email, password } = req.body;
 
-  res.clearCookie('session_token');
-  res.json({ message: 'Logged out successfully' });
+  try {
+    const user = await User.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+    const valid = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
+
+    if (!valid) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+    const token = jwt.sign(
+      {
+        user_id: user.user_id,
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      }
+    );
+
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+
+    return res.status(500).json({
+      message: "Login failed",
+    });
+  }
 };
+
 
 
 const resendOtp = async (req, res) => {
@@ -316,7 +376,7 @@ const resendOtp = async (req, res) => {
 
 const changePassword = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { user_id } = req.user;
     const { oldPassword, newPassword } = req.body;
 
     const checkDBForPassword = await User.findOne({ where: { user_id } });
@@ -418,7 +478,7 @@ const completeForgetPassword = async (req, res) => {
 
 const updateUserProfile = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { user_id } = req.user;
     const { first_name, last_name } = req.body;
 
     const user = await User.findOne({ where: { user_id } });
@@ -454,22 +514,41 @@ const updateUserProfile = async (req, res) => {
 const startFundAccount = async (req, res) => {
   try {
     const { amount } = req.body;
-    const { email } = req.params;
-    const checkUser = await User.findOne({ where: { email } });
-    if (!checkUser.email) {
-      throw new Error("Email is required");
+    const { email } = req.user;
+
+    if (!amount || Number(amount) < 100) {
+      return res.status(400).json({
+        message: "Minimum funding amount is ₦100",
+      });
     }
-    const transaction = await intializePayment(email, amount);
-    if (transaction.status === false) {
-      throw new Error("payment cannot be initialized this moment");
+
+    const checkUser = await User.findOne({
+      where: { email },
+    });
+
+    if (!checkUser || !checkUser.email) {
+      throw new Error("User email is required");
     }
-    res.status(200).json({
+
+    const transaction = await intializePayment(
+      email,
+      Number(amount)
+    );
+
+    if (transaction.data.status === false) {
+      throw new Error(
+        "Payment cannot be initialized this moment"
+      );
+    }
+
+    return res.status(200).json({
       message: "Transaction initialized successfully",
       data: transaction.data.data,
     });
   } catch (error) {
     console.log("error", error);
-    res.status(400).json({
+
+    return res.status(400).json({
       message: error.message || "Something went wrong",
     });
   }
@@ -477,41 +556,73 @@ const startFundAccount = async (req, res) => {
 
 const completeFundAccount = async (req, res) => {
   const { reference } = req.params;
-  const { user_id } = req.params;
+  const { user_id } = req.user;
 
   if (!reference) {
-    return res.status(400).json({ error: "Payment reference is required" });
+    return res.status(400).json({
+      error: "Payment reference is required",
+    });
   }
 
   const t = await sequelize.transaction();
 
   try {
+    // Get authenticated user
+    const user = await User.findByPk(user_id, {
+      transaction: t,
+    });
+
+    if (!user || !user.email) {
+      throw new Error("User not found");
+    }
+
+    // Check if this reference has already been processed
     const existingTx = await Transaction.findOne({
-      where: { payment_reference: reference },
+      where: {
+        payment_reference: reference,
+      },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
+
     if (existingTx) {
       await t.rollback();
-      return res.status(200).json({ message: "Transaction already processed" });
+
+      return res.status(200).json({
+        message: "Transaction already processed",
+        new_balance: null,
+      });
     }
 
+    // Verify transaction directly with Paystack
     const verifyPaymentTransaction = await verifyPayment(reference);
-    // if (data.status !== "success") {
-    //   await t.rollback();
-    //   return res.status(400).json({ error: "Payment not successful" });
-    // }
 
-    if (verifyPaymentTransaction.data.status === false) {
-      throw new Error("Transaction failed");
+    if (!verifyPaymentTransaction.data.status) {
+      throw new Error("Transaction verification failed");
     }
 
     const data = verifyPaymentTransaction.data.data;
 
+    // Make sure this Paystack transaction belongs to this user
+    if (
+      !data.customer ||
+      data.customer.email.toLowerCase() !== user.email.toLowerCase()
+    ) {
+      throw new Error("Payment does not belong to this user");
+    }
+
+    // Make sure Paystack says payment was successful
+    if (data.status !== "success") {
+      throw new Error("Payment was not successful");
+    }
+
     const amountInNaira = data.amount / 100;
 
+    // Find user's wallet
     const wallet = await Wallet.findOne({
-      where: { user_id },
+      where: {
+        user_id,
+      },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
@@ -520,9 +631,15 @@ const completeFundAccount = async (req, res) => {
       throw new Error("Wallet not found");
     }
 
-    wallet.balance = parseFloat(wallet.balance || 0) + amountInNaira;
-    await wallet.save({ transaction: t });
+    // Credit wallet
+    wallet.balance =
+      parseFloat(wallet.balance || 0) + amountInNaira;
 
+    await wallet.save({
+      transaction: t,
+    });
+
+    // Record transaction
     await Transaction.create(
       {
         transaction_id: uuidv4(),
@@ -532,18 +649,25 @@ const completeFundAccount = async (req, res) => {
         status: TRANSACTION_STATUS.COMPLETED,
         payment_reference: reference,
       },
-      { transaction: t }
+      {
+        transaction: t,
+      }
     );
 
     await t.commit();
+
     return res.status(200).json({
       message: "Wallet funded successfully",
       new_balance: wallet.balance,
     });
   } catch (error) {
     await t.rollback();
+
     console.error("Fund account error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+
+    return res.status(400).json({
+      error: error.message || "Payment verification failed",
+    });
   }
 };
 const getUserWallet = async (req, res) => {
@@ -575,7 +699,7 @@ const getUserProfile = async (req, res) => {
 
     const user = await User.findOne({
       where: { user_id: req.user.user_id },
-      attributes: { exclude: ["password_hash"] }, // don’t expose password
+      attributes: { exclude: ["password_hash", "password_salt","pin_hash"] }, // don’t expose password
     });
 
     if (!user) {
@@ -614,7 +738,7 @@ const getUserTransactions = async (req, res) => {
 };
 const requestEmailChange = async (req, res) => {
   const { email } = req.body;
-  const user_id = req.user.user_id;
+  const {user_id} = req.user;
 
   const transaction = await sequelize.transaction();
   try {
@@ -647,7 +771,7 @@ const requestEmailChange = async (req, res) => {
 };
 const verifyEmailChange = async (req, res) => {
   const { otp } = req.body;
-  const user_id = req.user.user_id;
+  const {user_id} = req.user;
 
   const transaction = await sequelize.transaction();
   try {
@@ -682,7 +806,7 @@ const verifyEmailChange = async (req, res) => {
 };
 const requestPhoneChange = async (req, res) => {
   const { phone_number } = req.body;
-  const user_id = req.user.user_id;
+  const {user_id} = req.user
   const normalizedPhone = normalizePhone(phone_number);
 
   const transaction = await sequelize.transaction();
@@ -714,7 +838,7 @@ const requestPhoneChange = async (req, res) => {
 };
 const verifyPhoneChange = async (req, res) => {
   const { otp } = req.body;
-  const user_id = req.user.user_id;
+  const {user_id} = req.user;
 
   const transaction = await sequelize.transaction();
   try {
@@ -747,7 +871,6 @@ module.exports = {
   createUser,
   verifyUser,
   startFundAccount,
-
   loginUser,
   completeForgetPassword,
   updateUserProfile,
@@ -758,11 +881,11 @@ module.exports = {
   getUserWallet,
   getUserProfile,
   getUserTransactions,
-  refreshTokens,
-  logoutUser,
   requestEmailChange,
   verifyEmailChange,
   requestPhoneChange,
   verifyPhoneChange,
-  checkAvailability
+  checkAvailability,
+  createPin,
+  changePin
 };

@@ -83,6 +83,36 @@ function generateRandomPassword(length = 12) {
 
   return result.join("");
 }
+const verifyPin = async (user, pin) => {
+  if (!user.pin_hash) {
+    return {
+      valid: false,
+      message: "Transaction PIN has not been set",
+    };
+  }
+
+  if (!pin || !/^\d{4}$/.test(pin)) {
+    return {
+      valid: false,
+      message: "Invalid PIN format",
+    };
+  }
+
+  const valid = await bcrypt.compare(pin, user.pin_hash);
+
+  if (!valid) {
+    return {
+      valid: false,
+      message: "Incorrect PIN",
+    };
+  }
+
+  return {
+    valid: true,
+  };
+};
+
+ 
 
 module.exports = {
   isEmpty,
@@ -91,5 +121,6 @@ module.exports = {
   generateOtp,
   generateRandomPassword,
   generateRequestId,
-  generateRef
+  generateRef,
+  verifyPin
 };

@@ -15,13 +15,13 @@ const {
   getUserWallet,
   getUserProfile,
   getUserTransactions,
-  refreshTokens,
-  logoutUser,
   requestEmailChange,
   verifyEmailChange,
   requestPhoneChange,
   verifyPhoneChange,
-  checkAvailability
+  checkAvailability,
+  createPin,
+  changePin
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
@@ -32,18 +32,18 @@ router.post("/create/user", validationmiddleware(createUserSchema), createUser);
 router.post("/verify/otp", verifyUser);
 router.post("/check/availability", checkAvailability);
 router.post("/start/fund/account", UserAuthorization, startFundAccount);
+router.post("/create/pin", UserAuthorization, createPin);
+router.put("/change/pin", UserAuthorization, changePin);
 router.post("/login/user", loginUser);
-router.post("/refresh-token", refreshTokens);
-router.post("/logout", UserAuthorization, logoutUser);
-router.get("/complete-fund-account/:reference", UserAuthorization, completeFundAccount);
+router.get("/complete/fund/account/:reference", UserAuthorization, completeFundAccount);
 router.post("/complete/forget/password",  completeForgetPassword);
 router.patch("/update/profile", UserAuthorization, updateUserProfile);
-router.post("/resend-otp", resendOtp);
-router.post("/start-forget-password",validationmiddleware(verifyEmailSchema), startForgetPassword);
-router.post("/change-password", UserAuthorization, validationmiddleware(changePasswordSchema), changePassword);
-router.get("/get-user-wallet", UserAuthorization, getUserWallet);
-router.get("/get-user-profile", UserAuthorization, getUserProfile);
-router.get("/get-user-transactions", UserAuthorization, getUserTransactions);
+router.post("/resend/otp", resendOtp);
+router.post("/start/forget/password",validationmiddleware(verifyEmailSchema), startForgetPassword);
+router.post("/change/password", UserAuthorization, validationmiddleware(changePasswordSchema), changePassword);
+router.get("/get/user/wallet", UserAuthorization, getUserWallet);
+router.get("/get/user/profile", UserAuthorization, getUserProfile);
+router.get("/get/user/transactions", UserAuthorization, getUserTransactions);
 router.patch("/request/email/change", UserAuthorization, requestEmailChange);
 router.post("/verify/email/change", UserAuthorization, verifyEmailChange);
 router.patch("/request/phone/change", UserAuthorization, requestPhoneChange);

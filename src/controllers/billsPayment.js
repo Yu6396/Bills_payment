@@ -1,7 +1,7 @@
 const { BillTransaction, BillProvider,Wallet } = require("../../models");
 const vtpass = require("../services/vtPassServices");
 const { v4: uuidv4 } = require("uuid");
-const {   generateRequestId } = require("../utils");
+const {   generateRequestId,verifyPin } = require("../utils");
 const { getFriendlyMessage } = require("../utils/vtpassErrorMap");
    
 
@@ -27,10 +27,14 @@ async function debitWallet(user_id, amount) {
 
   const payAirtime = async (req, res) => {
   try {
-    const { provider_id, phone, amount } = req.body;
-    const {user_id} = req.params
+    const { provider_id, phone, amount,pin } = req.body;
+    const {user_id} = req.user
 
-    // Check provider
+    const checkPin = await verifyPin(req.user, pin);
+    if (!checkPin.valid) {
+      return res.status(400).json({ message: checkPin.message });
+    }
+
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
@@ -84,9 +88,13 @@ async function debitWallet(user_id, amount) {
 
   const payData = async (req, res) => {
   try {
-    const { provider_id, phone, variation_code, amount } = req.body;
-    const {user_id }= req.params
-     
+    const { provider_id, phone, variation_code, amount,pin } = req.body;
+    const {user_id }= req.user
+
+    const checkPin = await verifyPin(req.user, pin);
+    if (!checkPin.valid) {
+      return res.status(400).json({ message: checkPin.message });
+    }
     
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
@@ -96,7 +104,7 @@ async function debitWallet(user_id, amount) {
     
     await debitWallet(user_id, amount);
 
-    // Generate transaction reference
+
     const requestId = generateRequestId();
 
     
@@ -113,15 +121,12 @@ async function debitWallet(user_id, amount) {
       customer_info: phone,
     });
 
-    // Call VTPass
     const result = await vtpass.buyData({
       requestId,
       network: provider.code,
       phone,
       variationCode: variation_code,
     });
-
-    // Update transaction with VTPass result
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
       amount: result?.data?.content?.transactions?.amount || amount,
@@ -142,10 +147,14 @@ async function debitWallet(user_id, amount) {
 
   const payElectricity = async (req, res) => {
   try {
-    const { provider_id, meter_no, type, amount, phone } = req.body;
-    const {user_id} = req.params;
+    const { provider_id, meter_no, type, amount, phone,pin } = req.body;
+    const {user_id} = req.user;
 
-    
+    const checkPin= await verifyPin(req.user, pin);
+    if (!checkPin.valid) {
+      return res.status(400).json({ message: checkPin.message });
+    }
+
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
@@ -154,7 +163,6 @@ async function debitWallet(user_id, amount) {
     
     await debitWallet(user_id, amount);
 
-    // Generate transaction reference
     const requestId = generateRequestId();
 
     
@@ -171,7 +179,7 @@ async function debitWallet(user_id, amount) {
       customer_info: meter_no,
     });
 
-    // Call VTPass
+  
     const result = await vtpass.payElectricity({
       requestId,
       disco: provider.code,
@@ -181,7 +189,6 @@ async function debitWallet(user_id, amount) {
       phone,
     });
 
-    // Update transaction based on VTPass response
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
       token: result?.data?.token,
@@ -202,8 +209,13 @@ async function debitWallet(user_id, amount) {
 
   const payTV = async (req, res) => {
   try {
-    const { provider_id, smart_card, variation_code, amount, phone } = req.body;
-    const {user_id} = req.params;
+    const { provider_id, smart_card, variation_code, amount, phone,pin } = req.body;
+    const {user_id} = req.user;
+
+    const checkPin = await verifyPin(req.user, pin);
+    if (!checkPin.valid) {
+      return res.status(400).json({ message: checkPin.message });
+    }
 
     
     const provider = await BillProvider.findByPk(provider_id);
@@ -231,7 +243,6 @@ async function debitWallet(user_id, amount) {
       customer_info: smart_card,
     });
 
-    // Call VTpass
     const result = await vtpass.payTV({
       requestId,
       provider: provider.code,
@@ -239,8 +250,6 @@ async function debitWallet(user_id, amount) {
       variationCode: variation_code,
       phone,
     });
-
-    // Update transaction with response
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
       expiry_date: result?.data?.content?.transactions?.expiry_date,

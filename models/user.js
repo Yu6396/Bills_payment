@@ -8,7 +8,10 @@ module.exports = (sequelize, DataTypes) => {
       User.hasMany(models.Wallet, { foreignKey: "user_id" });
       User.hasMany(models.Transaction, { foreignKey: "user_id" });
       User.hasMany(models.BillTransaction, { foreignKey: "user_id" });
-      User.hasMany(models.OAuthCredential, { foreignKey: "user_id", as: "oauthCredentials"});
+      User.hasMany(models.OAuthCredential, {
+        foreignKey: "user_id",
+        as: "oauthCredentials",
+      });
     }
   }
 
@@ -23,10 +26,11 @@ module.exports = (sequelize, DataTypes) => {
       last_name: { type: DataTypes.STRING(100), allowNull: false },
       email: { type: DataTypes.STRING(150), allowNull: false, unique: true },
       password_hash: { type: DataTypes.STRING, allowNull: false },
+      pin_hash: { type: DataTypes.STRING, allowNull: true},
       password_salt: { type: DataTypes.STRING, allowNull: false },
       phone_number: { type: DataTypes.STRING(20), unique: true },
       is_verified: { type: DataTypes.BOOLEAN, defaultValue: false },
-      pending_email: { type: DataTypes.STRING(150), allowNull: true ,},
+      pending_email: { type: DataTypes.STRING(150), allowNull: true },
       is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
       pending_phone_number: { type: DataTypes.STRING(20), allowNull: true },
     },
@@ -35,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
       modelName: "User",
       tableName: "users",
       underscored: true,
-    }
+    },
   );
 
   return User;
