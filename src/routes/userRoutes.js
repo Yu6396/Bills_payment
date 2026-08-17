@@ -26,6 +26,7 @@ const {
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
 const { UserAuthorization } = require("../middlewares/authorization");
+const { getUserBillTransactions } = require("../controllers/billsPayment");
 
 router.post("/create/user", validationmiddleware(createUserSchema), createUser);
 
@@ -48,6 +49,8 @@ router.patch("/request/email/change", UserAuthorization, requestEmailChange);
 router.post("/verify/email/change", UserAuthorization, verifyEmailChange);
 router.patch("/request/phone/change", UserAuthorization, requestPhoneChange);
 router.post("/verify/phone/change", UserAuthorization, verifyPhoneChange);
+router.get("/transactions/bills", UserAuthorization, getUserBillTransactions);
+
 
 
 module.exports = router;

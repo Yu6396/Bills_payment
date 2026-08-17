@@ -313,6 +313,7 @@ const loginUser = async (req, res) => {
         expiresIn: "1h",
       }
     );
+    
 
     return res.status(200).json({
       message: "Login successful",
@@ -322,6 +323,8 @@ const loginUser = async (req, res) => {
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
+        pin_hash: user.pin_hash,
+        phone_number: user.phone_number
       },
     });
   } catch (error) {
