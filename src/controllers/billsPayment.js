@@ -3,16 +3,23 @@ const {
   BillProvider,
   Wallet,
   BillCategory,
+  Transaction,
 } = require("../../models");
 const vtpass = require("../services/vtPassServices");
+const { sequelize } = require("../../models");
 const { v4: uuidv4 } = require("uuid");
 const { generateRequestId, verifyPin } = require("../utils");
 const { getFriendlyMessage } = require("../utils/vtpassErrorMap");
 
-async function debitWallet(user_id, amount) {
+async function debitWallet(user_id, amount, payment_reference = null) {
   try {
-    const wallet = await Wallet.findOne({ where: { user_id } });
-    if (!wallet) throw new Error("Wallet not found");
+    const wallet = await Wallet.findOne({
+      where: { user_id },
+    });
+
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
 
     if (Number(wallet.balance) < Number(amount)) {
       throw new Error("Insufficient balance");
@@ -20,33 +27,47 @@ async function debitWallet(user_id, amount) {
 
     wallet.balance = Number(wallet.balance) - Number(amount);
 
-    await wallet.save(); // save the updated balance
+    await wallet.save();
+
+    await Transaction.create({
+      user_id,
+      wallet_id: wallet.wallet_id,
+      amount: Number(amount),
+      type: "debit",
+      status: "successful",
+      payment_reference,
+    });
+
     return wallet;
   } catch (error) {
     throw new Error(error.message || "Failed to debit wallet");
   }
 }
-
 const payAirtime = async (req, res) => {
   try {
     const { provider_id, phone, amount, pin } = req.body;
     const { user_id } = req.user;
 
-    const checkPin = await verifyPin(req.user, pin);
-    if (!checkPin.valid) {
-      return res.status(400).json({ message: checkPin.message });
-    }
+    // const checkPin = await verifyPin(req.user, pin);
+
+    // if (!checkPin.valid) {
+    //   return res.status(400).json({
+    //     message: checkPin.message,
+    //   });
+    // }
 
     const provider = await BillProvider.findByPk(provider_id);
+
     if (!provider) {
-      return res.status(404).json({ message: "Provider not found" });
+      return res.status(404).json({
+        message: "Provider not found",
+      });
     }
 
-    await debitWallet(user_id, amount);
-
-    // Generate transaction reference
+    // Generate reference BEFORE wallet debit
     const requestId = generateRequestId();
 
+    // Create bill transaction as pending
     const transaction = await BillTransaction.create({
       user_id,
       category_id: provider.category_id,
@@ -60,6 +81,9 @@ const payAirtime = async (req, res) => {
       customer_info: phone,
     });
 
+    // Debit wallet + create wallet transaction
+    await debitWallet(user_id, amount, requestId);
+
     const result = await vtpass.buyAirtime({
       requestId,
       phone,
@@ -67,11 +91,15 @@ const payAirtime = async (req, res) => {
       network: provider.code,
     });
 
+    const successful = result.success && result?.data?.code === "000";
+
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
-      status:
-        result.success && result?.data?.code === "000" ? "success" : "failed",
+
+      status: successful ? "success" : "failed",
     });
+
+    
 
     return res.json({
       message: getFriendlyMessage(
@@ -83,7 +111,10 @@ const payAirtime = async (req, res) => {
     });
   } catch (err) {
     console.error("Pay Airtime Error:", err.message);
-    return res.status(400).json({ message: err.message });
+
+    return res.status(400).json({
+      message: err.message,
+    });
   }
 };
 
@@ -102,8 +133,6 @@ const payData = async (req, res) => {
       return res.status(404).json({ message: "Provider not found" });
     }
 
-    await debitWallet(user_id, amount);
-
     const requestId = generateRequestId();
 
     const transaction = await BillTransaction.create({
@@ -118,6 +147,8 @@ const payData = async (req, res) => {
       payment_method: "wallet",
       customer_info: phone,
     });
+
+    await debitWallet(user_id, amount, requestId);
 
     const result = await vtpass.buyData({
       requestId,
@@ -151,17 +182,15 @@ const payElectricity = async (req, res) => {
     const { provider_id, meter_no, type, amount, phone, pin } = req.body;
     const { user_id } = req.user;
 
-    const checkPin = await verifyPin(req.user, pin);
-    if (!checkPin.valid) {
-      return res.status(400).json({ message: checkPin.message });
-    }
+    // const checkPin = await verifyPin(req.user, pin);
+    // if (!checkPin.valid) {
+    //   return res.status(400).json({ message: checkPin.message });
+    // }
 
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
-
-    await debitWallet(user_id, amount);
 
     const requestId = generateRequestId();
 
@@ -178,6 +207,7 @@ const payElectricity = async (req, res) => {
       customer_info: meter_no,
     });
 
+    await debitWallet(user_id, amount, requestId);
     const result = await vtpass.payElectricity({
       requestId,
       disco: provider.code,
@@ -214,17 +244,15 @@ const payTV = async (req, res) => {
       req.body;
     const { user_id } = req.user;
 
-    const checkPin = await verifyPin(req.user, pin);
-    if (!checkPin.valid) {
-      return res.status(400).json({ message: checkPin.message });
-    }
+    // const checkPin = await verifyPin(req.user, pin);
+    // if (!checkPin.valid) {
+    //   return res.status(400).json({ message: checkPin.message });
+    // }
 
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
-
-    await debitWallet(user_id, amount);
 
     const requestId = generateRequestId();
 
@@ -240,6 +268,8 @@ const payTV = async (req, res) => {
       payment_method: "wallet",
       customer_info: smart_card,
     });
+
+    await debitWallet(user_id, amount, requestId);
 
     const result = await vtpass.payTV({
       requestId,
@@ -363,7 +393,6 @@ const getUserBillTransactions = async (req, res) => {
       created_at: transaction.createdAt,
     }));
 
-
     return res.status(200).json({
       message: "Bill transactions retrieved successfully",
       transactions: formattedTransactions,
@@ -377,6 +406,74 @@ const getUserBillTransactions = async (req, res) => {
   }
 };
 
+const getBillTransactionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id;
+
+    const transaction = await BillTransaction.findOne({
+      where: {
+        transaction_id: id,
+        user_id: userId,
+      },
+      include: [
+        {
+          model: BillCategory,
+          as: "category",
+          attributes: ["category_id", "name"],
+        },
+        {
+          model: BillProvider,
+          as: "provider",
+          attributes: ["provider_id", "name"],
+        },
+      ],
+    });
+
+    if (!transaction) {
+      return res.status(404).json({
+        message: "Bill transaction not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Bill transaction retrieved successfully",
+      transaction: {
+        id: transaction.transaction_id,
+        reference: transaction.transaction_ref,
+        amount: Number(transaction.amount),
+        service_charge: Number(transaction.service_charge),
+        total_amount: Number(transaction.total_amount),
+        status:
+          transaction.status === "success" ? "successful" : transaction.status,
+        token: transaction.token,
+        expiry_date: transaction.expiry_date,
+        customer_info: transaction.customer_info,
+        payment_method: transaction.payment_method,
+        created_at: transaction.createdAt,
+        category: transaction.category
+          ? {
+              id: transaction.category.category_id,
+              name: transaction.category.name,
+            }
+          : null,
+        provider: transaction.provider
+          ? {
+              id: transaction.provider.provider_id,
+              name: transaction.provider.name,
+            }
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("Get bill transaction error:", error);
+
+    return res.status(500).json({
+      message: "Failed to retrieve bill transaction",
+    });
+  }
+};
+
 module.exports = {
   payAirtime,
   payData,
@@ -384,4 +481,5 @@ module.exports = {
   payTV,
   requeryTransaction,
   getUserBillTransactions,
+  getBillTransactionById,
 };

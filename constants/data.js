@@ -1,7 +1,7 @@
 
 const TRANSACTION_STATUS = {
   PENDING: 'pending',
-  COMPLETED: 'completed',
+  SUCCESSFUL: 'successful',
   FAILED: 'failed',
 }
 

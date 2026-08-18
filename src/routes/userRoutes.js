@@ -1,8 +1,7 @@
-
 const express = require("express");
 const router = express.Router();
 const {
-    createUser,
+  createUser,
   verifyUser,
   loginUser,
   completeForgetPassword,
@@ -21,12 +20,21 @@ const {
   verifyPhoneChange,
   checkAvailability,
   createPin,
-  changePin
+  changePin,
+  getUserTransactionById,
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
-const { createUserSchema , changePasswordSchema,verifyEmailSchema, completeForgetPasswordSchema} = require("../validations/userValidation");
+const {
+  createUserSchema,
+  changePasswordSchema,
+  verifyEmailSchema,
+  completeForgetPasswordSchema,
+} = require("../validations/userValidation");
 const { UserAuthorization } = require("../middlewares/authorization");
-const { getUserBillTransactions } = require("../controllers/billsPayment");
+const {
+  getUserBillTransactions,
+  getBillTransactionById,
+} = require("../controllers/billsPayment");
 
 router.post("/create/user", validationmiddleware(createUserSchema), createUser);
 
@@ -36,21 +44,34 @@ router.post("/start/fund/account", UserAuthorization, startFundAccount);
 router.post("/create/pin", UserAuthorization, createPin);
 router.put("/change/pin", UserAuthorization, changePin);
 router.post("/login/user", loginUser);
-router.get("/complete/fund/account/:reference", UserAuthorization, completeFundAccount);
-router.post("/complete/forget/password",  completeForgetPassword);
+router.get(
+  "/complete/fund/account/:reference",
+  UserAuthorization,
+  completeFundAccount,
+);
+router.post("/complete/forget/password", completeForgetPassword);
 router.patch("/update/profile", UserAuthorization, updateUserProfile);
 router.post("/resend/otp", resendOtp);
-router.post("/start/forget/password",validationmiddleware(verifyEmailSchema), startForgetPassword);
-router.post("/change/password", UserAuthorization, validationmiddleware(changePasswordSchema), changePassword);
+router.post(
+  "/start/forget/password",
+  validationmiddleware(verifyEmailSchema),
+  startForgetPassword,
+);
+router.post(
+  "/change/password",
+  UserAuthorization,
+  validationmiddleware(changePasswordSchema),
+  changePassword,
+);
 router.get("/get/user/wallet", UserAuthorization, getUserWallet);
 router.get("/get/user/profile", UserAuthorization, getUserProfile);
 router.get("/get/user/transactions", UserAuthorization, getUserTransactions);
+router.get("/get/user/transactions/:id", UserAuthorization, getUserTransactionById);
 router.patch("/request/email/change", UserAuthorization, requestEmailChange);
 router.post("/verify/email/change", UserAuthorization, verifyEmailChange);
 router.patch("/request/phone/change", UserAuthorization, requestPhoneChange);
 router.post("/verify/phone/change", UserAuthorization, verifyPhoneChange);
 router.get("/transactions/bills", UserAuthorization, getUserBillTransactions);
-
-
+router.get("/transactions/bills/:id", UserAuthorization, getBillTransactionById);
 
 module.exports = router;

@@ -36,7 +36,12 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "pending",
       },
       payment_method: { type: DataTypes.STRING(50) },
-      customer_info: { type: DataTypes.STRING(100) }, // e.g. smartcard, meter, phone
+      customer_info: { type: DataTypes.STRING(100) }, 
+      refunded: {
+  type: DataTypes.BOOLEAN,
+  allowNull: false,
+  defaultValue: false,
+}
     },
     {
       sequelize,

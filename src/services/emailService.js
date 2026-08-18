@@ -24,18 +24,22 @@ async function sendEmail(mailTo, subject, data, views) {
   const html = await readAndSendEmail(data, views);
 
   const mailOptions = {
-    from: "twodot40@gmail.com",
+    from: process.env.GMAIL_APP_USER,
     to: mailTo,
-    subject: subject,
-    html: html,
+    subject,
+    html,
   };
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.error("Error sending email: ", error);
-    } else {
-      console.log("Email sent: ", info.response);
-    }
-  });
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("Email sent:", info.response);
+
+    return info;
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw error;
+  }
 }
 
 module.exports = sendEmail;

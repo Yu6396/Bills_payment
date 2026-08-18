@@ -649,7 +649,8 @@ const completeFundAccount = async (req, res) => {
         user_id,
         wallet_id: wallet.wallet_id,
         amount: amountInNaira,
-        status: TRANSACTION_STATUS.COMPLETED,
+        type: "credit",
+        status: TRANSACTION_STATUS.SUCCESSFUL,
         payment_reference: reference,
       },
       {
@@ -736,6 +737,50 @@ const getUserTransactions = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: error.message || "Something went wrong",
+    });
+  }
+};
+const getUserTransactionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.user;
+
+    const transaction = await Transaction.findOne({
+      where: {
+        transaction_id: id,
+        user_id,
+      },
+    });
+
+    if (!transaction) {
+      return res.status(404).json({
+        message: "Transaction not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Transaction retrieved successfully",
+
+      transaction: {
+        id: transaction.transaction_id,
+        amount: Number(transaction.amount),
+
+        type: transaction.type,
+
+        status:
+          transaction.status === "successful"
+            ? "successful"
+            : transaction.status,
+
+        reference: transaction.payment_reference,
+        created_at: transaction.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Get transaction by ID error:", error);
+
+    return res.status(500).json({
+      message: "Failed to retrieve transaction",
     });
   }
 };
@@ -890,5 +935,6 @@ module.exports = {
   verifyPhoneChange,
   checkAvailability,
   createPin,
-  changePin
+  changePin,
+  getUserTransactionById,
 };

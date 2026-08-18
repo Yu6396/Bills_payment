@@ -6,7 +6,10 @@ module.exports = (sequelize, DataTypes) => {
   class Transaction extends Model {
     static associate(models) {
       Transaction.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
-      Transaction.belongsTo(models.Wallet, { foreignKey: "wallet_id", as: "wallet" });
+      Transaction.belongsTo(models.Wallet, {
+        foreignKey: "wallet_id",
+        as: "wallet",
+      });
     }
   }
 
@@ -22,13 +25,17 @@ module.exports = (sequelize, DataTypes) => {
       amount: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0.0 },
       status: { type: DataTypes.STRING },
       payment_reference: { type: DataTypes.STRING },
+      type: {
+        type: DataTypes.ENUM("credit", "debit"),
+        allowNull: false,
+      },
     },
     {
       sequelize,
       modelName: "Transaction",
       tableName: "transactions",
       underscored: true,
-    }
+    },
   );
 
   return Transaction;
