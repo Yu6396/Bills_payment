@@ -123,15 +123,17 @@ const payData = async (req, res) => {
     const { provider_id, phone, variation_code, amount, pin } = req.body;
     const { user_id } = req.user;
 
-    const checkPin = await verifyPin(req.user, pin);
-    if (!checkPin.valid) {
-      return res.status(400).json({ message: checkPin.message });
-    }
+    // const checkPin = await verifyPin(req.user, pin);
+    // if (!checkPin.valid) {
+    //   return res.status(400).json({ message: checkPin.message });
+    // }
 
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
+
+    
 
     const requestId = generateRequestId();
 

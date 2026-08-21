@@ -726,17 +726,44 @@ const getUserProfile = async (req, res) => {
 const getUserTransactions = async (req, res) => {
   try {
     const { user_id } = req.user;
-    const transactions = await Transaction.findAll({ where: { user_id } });
-    if (!transactions) {
-      throw new Error("Transactions not found");
-    }
-    res.status(200).json({
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit) || 20, 1),
+      50
+    );
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows: transactions } =
+      await Transaction.findAndCountAll({
+        where: {
+          user_id,
+        },
+        order: [["createdAt", "DESC"]],
+        limit,
+        offset,
+      });
+
+    const totalPages = Math.ceil(count / limit);
+
+    return res.status(200).json({
       message: "Transactions found successfully",
       data: transactions,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: count,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
     });
-  } catch (error) {
-    res.status(400).json({
-      message: error.message || "Something went wrong",
+  } catch (err) {
+    console.error("Get User Transactions Error:", err.message);
+
+    return res.status(500).json({
+      message: "Failed to fetch transactions",
     });
   }
 };
