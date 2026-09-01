@@ -1,6 +1,7 @@
 const {
   BillTransaction,
   BillProvider,
+  BillProduct,
   Wallet,
   BillCategory,
   Transaction,
@@ -10,6 +11,7 @@ const { sequelize } = require("../../models");
 const { v4: uuidv4 } = require("uuid");
 const { generateRequestId, verifyPin } = require("../utils");
 const { getFriendlyMessage } = require("../utils/vtpassErrorMap");
+const { Op } = require("sequelize");
 
 async function debitWallet(user_id, amount, payment_reference = null) {
   try {
@@ -43,18 +45,32 @@ async function debitWallet(user_id, amount, payment_reference = null) {
     throw new Error(error.message || "Failed to debit wallet");
   }
 }
+function extractElectricityToken(data) {
+  const rawToken =
+    data?.token ||
+    data?.Token ||
+    data?.purchased_code;
+
+  if (!rawToken) {
+    return null;
+  }
+
+  return rawToken
+    .replace(/^token\s*:\s*/i, "")
+    .trim();
+}
 const payAirtime = async (req, res) => {
   try {
     const { provider_id, phone, amount, pin } = req.body;
     const { user_id } = req.user;
 
-    // const checkPin = await verifyPin(req.user, pin);
+    const checkPin = await verifyPin(req.user, pin);
 
-    // if (!checkPin.valid) {
-    //   return res.status(400).json({
-    //     message: checkPin.message,
-    //   });
-    // }
+    if (!checkPin.valid) {
+      return res.status(400).json({
+        message: checkPin.message,
+      });
+    }
 
     const provider = await BillProvider.findByPk(provider_id);
 
@@ -99,8 +115,6 @@ const payAirtime = async (req, res) => {
       status: successful ? "success" : "failed",
     });
 
-    
-
     return res.json({
       message: getFriendlyMessage(
         result?.data?.code,
@@ -108,6 +122,7 @@ const payAirtime = async (req, res) => {
       ),
       transaction,
       vtpass: result,
+      status: successful ? "success" : "failed",
     });
   } catch (err) {
     console.error("Pay Airtime Error:", err.message);
@@ -120,20 +135,56 @@ const payAirtime = async (req, res) => {
 
 const payData = async (req, res) => {
   try {
-    const { provider_id, phone, variation_code, amount, pin } = req.body;
+    const { provider_id, phone, variation_code, pin } = req.body;
     const { user_id } = req.user;
 
-    // const checkPin = await verifyPin(req.user, pin);
-    // if (!checkPin.valid) {
-    //   return res.status(400).json({ message: checkPin.message });
-    // }
-
-    const provider = await BillProvider.findByPk(provider_id);
-    if (!provider) {
-      return res.status(404).json({ message: "Provider not found" });
+    if (!provider_id || !phone || !variation_code || !pin) {
+      return res.status(400).json({
+        message: "provider_id, phone, variation_code and pin are required",
+      });
     }
 
-    
+    const checkPin = await verifyPin(req.user, pin);
+
+    if (!checkPin.valid) {
+      return res.status(400).json({
+        message: checkPin.message,
+      });
+    }
+
+    const provider = await BillProvider.findOne({
+      where: {
+        provider_id,
+        is_active: true,
+      },
+    });
+
+    if (!provider) {
+      return res.status(404).json({
+        message: "Provider not found",
+      });
+    }
+
+    const product = await BillProduct.findOne({
+      where: {
+        provider_id,
+        variation_code,
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Data plan not found",
+      });
+    }
+
+    const amount = Number(product.price);
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        message: "Invalid data plan price",
+      });
+    }
 
     const requestId = generateRequestId();
 
@@ -158,11 +209,15 @@ const payData = async (req, res) => {
       phone,
       variationCode: variation_code,
     });
+
+    const successful = result.success && result?.data?.code === "000";
+
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
+
+      status: successful ? "success" : "failed",
+
       amount: result?.data?.content?.transactions?.amount || amount,
-      status:
-        result.success && result?.data?.code === "000" ? "success" : "failed",
     });
 
     return res.json({
@@ -172,22 +227,26 @@ const payData = async (req, res) => {
       ),
       transaction,
       vtpass: result,
+      status: successful ? "success" : "failed",
     });
   } catch (err) {
     console.error("Pay Data Error:", err.message);
-    return res.status(400).json({ message: err.message });
+
+    return res.status(400).json({
+      message: err.message,
+    });
   }
 };
 
 const payElectricity = async (req, res) => {
   try {
-    const { provider_id, meter_no, type, amount, phone, pin } = req.body;
+    const { provider_id, meter_no, type, amount, pin } = req.body;
     const { user_id } = req.user;
-
-    // const checkPin = await verifyPin(req.user, pin);
-    // if (!checkPin.valid) {
-    //   return res.status(400).json({ message: checkPin.message });
-    // }
+    const phone = req.user.phone_number;
+    const checkPin = await verifyPin(req.user, pin);
+    if (!checkPin.valid) {
+      return res.status(400).json({ message: checkPin.message });
+    }
 
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
@@ -219,13 +278,22 @@ const payElectricity = async (req, res) => {
       phone,
     });
 
+    const successful = result.success && result?.data?.code === "000";
+
+    const token = extractElectricityToken(result?.data);
+      result?.data?.token ||
+      result?.data?.Token ||
+      result?.data?.purchased_code ||
+      null;
+
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
-      token: result?.data?.token,
+
+      token,
+
       status:
         result.success && result?.data?.code === "000" ? "success" : "failed",
     });
-
     return res.json({
       message: getFriendlyMessage(
         result?.data?.code,
@@ -233,6 +301,7 @@ const payElectricity = async (req, res) => {
       ),
       transaction,
       vtpass: result,
+      status: successful ? "success" : "failed",
     });
   } catch (err) {
     console.error("Pay Electricity Error:", err.message);
@@ -242,14 +311,16 @@ const payElectricity = async (req, res) => {
 
 const payTV = async (req, res) => {
   try {
-    const { provider_id, smart_card, variation_code, amount, phone, pin } =
+    const { provider_id, smart_card, variation_code, amount, pin } =
       req.body;
     const { user_id } = req.user;
 
-    // const checkPin = await verifyPin(req.user, pin);
-    // if (!checkPin.valid) {
-    //   return res.status(400).json({ message: checkPin.message });
-    // }
+const phone = req.user.phone_number;
+
+    const checkPin = await verifyPin(req.user, pin);
+    if (!checkPin.valid) {
+      return res.status(400).json({ message: checkPin.message });
+    }
 
     const provider = await BillProvider.findByPk(provider_id);
     if (!provider) {
@@ -280,6 +351,8 @@ const payTV = async (req, res) => {
       variationCode: variation_code,
       phone,
     });
+
+    const successful = result.success && result?.data?.code === "000";
     await transaction.update({
       vtpass_reference: result?.data?.requestId || requestId,
       expiry_date: result?.data?.content?.transactions?.expiry_date,
@@ -295,6 +368,7 @@ const payTV = async (req, res) => {
       ),
       transaction,
       vtpass: result,
+      status: successful ? "success" : "failed",
     });
   } catch (err) {
     console.error("Pay TV Error:", err.message);
@@ -302,6 +376,345 @@ const payTV = async (req, res) => {
   }
 };
 
+const getBillProviders = async (req, res) => {
+  try {
+    const { category } = req.query;
+
+    const providerWhere = {
+      is_active: true,
+    };
+
+    const categoryWhere = {
+      is_active: true,
+    };
+
+    if (category) {
+      categoryWhere.name = {
+        [Op.iLike]: category,
+      };
+    }
+
+    const providers = await BillProvider.findAll({
+      where: providerWhere,
+
+      attributes: [
+        "provider_id",
+        "name",
+        "code",
+        "description",
+        "service_charge",
+      ],
+
+      include: [
+        {
+          model: BillCategory,
+          as: "category",
+          attributes: ["category_id", "name"],
+          where: category ? categoryWhere : undefined,
+          required: !!category,
+        },
+      ],
+
+      order: [["name", "ASC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      providers,
+    });
+  } catch (error) {
+    console.error("Get bill providers error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch bill providers",
+    });
+  }
+};
+
+const getBillProducts = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+
+    const provider = await BillProvider.findOne({
+      where: {
+        provider_id: providerId,
+        is_active: true,
+      },
+      attributes: ["provider_id", "name", "code"],
+    });
+
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: "Bill provider not found",
+      });
+    }
+
+    const products = await BillProduct.findAll({
+      where: {
+        provider_id: providerId,
+      },
+      attributes: ["product_id", "name", "variation_code", "price"],
+      order: [["price", "ASC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      provider,
+      products,
+    });
+  } catch (error) {
+    console.error("Get bill products error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch bill products",
+    });
+  }
+};
+
+const verifyElectricityMeter = async (req, res) => {
+  try {
+    const { provider_id, meter_number, meter_type } = req.body;
+
+    if (!provider_id || !meter_number || !meter_type) {
+      return res.status(400).json({
+        success: false,
+        message: "provider_id, meter_number and meter_type are required",
+      });
+    }
+
+    if (!["prepaid", "postpaid"].includes(meter_type.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "meter_type must be prepaid or postpaid",
+      });
+    }
+
+    const provider = await BillProvider.findOne({
+      where: {
+        provider_id,
+        is_active: true,
+      },
+      attributes: ["provider_id", "name", "code"],
+    });
+
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: "Electricity provider not found",
+      });
+    }
+
+    const result = await vtpass.verifyElectricity({
+      serviceID: provider.code,
+      meterNo: meter_number,
+      meterType: meter_type.toLowerCase(),
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    const vtpassData = result.data;
+
+    const wrongMeter = vtpassData.content?.WrongBillersCode === true;
+
+    if (vtpassData.code !== "000" || wrongMeter) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        message:
+          vtpassData.content?.error ||
+          vtpassData.response_description ||
+          "Meter verification failed",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      verified: true,
+      provider: {
+        provider_id: provider.provider_id,
+        name: provider.name,
+        code: provider.code,
+      },
+      customer: vtpassData.content,
+    });
+  } catch (error) {
+    console.error("Electricity verification controller error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify electricity meter",
+    });
+  }
+};
+
+const verifyTVSmartCard = async (req, res) => {
+  try {
+    const { provider_id, smartcard_number } = req.body;
+
+    if (!provider_id || !smartcard_number) {
+      return res.status(400).json({
+        success: false,
+        message: "provider_id and smartcard_number are required",
+      });
+    }
+
+    const provider = await BillProvider.findOne({
+      where: {
+        provider_id,
+        is_active: true,
+      },
+      attributes: ["provider_id", "name", "code"],
+    });
+
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: "TV provider not found",
+      });
+    }
+
+    const result = await vtpass.verifyTV({
+      serviceID: provider.code,
+      smartCard: smartcard_number,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    const vtpassData = result.data;
+
+    if (vtpassData.code !== "000") {
+      return res.status(400).json({
+        success: false,
+        message:
+          vtpassData.response_description || "Smartcard verification failed",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      verified: true,
+      provider: {
+        provider_id: provider.provider_id,
+        name: provider.name,
+        code: provider.code,
+      },
+      customer: vtpassData.content,
+    });
+  } catch (error) {
+    console.error("TV verification controller error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify TV smartcard",
+    });
+  }
+};
+
+const getUserBillTransactions = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows: transactions } = await BillTransaction.findAndCountAll(
+      {
+        where: { user_id },
+
+        include: [
+          {
+            model: BillCategory,
+            as: "category",
+            attributes: ["category_id", "name"],
+          },
+          {
+            model: BillProvider,
+            as: "provider",
+            attributes: ["provider_id", "name"],
+          },
+        ],
+
+        order: [["created_at", "DESC"]],
+
+        limit,
+        offset,
+      },
+    );
+
+    const formattedTransactions = transactions.map((transaction) => ({
+      id: transaction.transaction_id,
+
+      reference: transaction.transaction_ref,
+
+      amount: Number(transaction.total_amount),
+
+      status:
+        transaction.status === "success" ? "successful" : transaction.status,
+
+      token: transaction.token,
+
+      expiry_date: transaction.expiry_date,
+
+      customer_info: transaction.customer_info,
+
+      payment_method: transaction.payment_method,
+
+      category: transaction.category
+        ? {
+            id: transaction.category.category_id,
+            name: transaction.category.name,
+          }
+        : null,
+
+      provider: transaction.provider
+        ? {
+            id: transaction.provider.provider_id,
+            name: transaction.provider.name,
+          }
+        : null,
+
+      created_at: transaction.createdAt,
+    }));
+
+    const totalPages = Math.ceil(count / limit);
+
+    return res.status(200).json({
+      message: "Bill transactions retrieved successfully",
+
+      transactions: formattedTransactions,
+
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: count,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get user bill transactions error:", error);
+
+    return res.status(500).json({
+      message: "Failed to retrieve bill transactions",
+    });
+  }
+};
 const requeryTransaction = async (req, res) => {
   try {
     const { transaction_ref } = req.params;
@@ -339,72 +752,6 @@ const requeryTransaction = async (req, res) => {
   } catch (err) {
     console.error("Requery Error:", err.message);
     return res.status(400).json({ message: err.message });
-  }
-};
-
-const getUserBillTransactions = async (req, res) => {
-  try {
-    const user_id = req.user.user_id;
-
-    const transactions = await BillTransaction.findAll({
-      where: { user_id },
-
-      include: [
-        {
-          model: BillCategory,
-          as: "category",
-          attributes: ["category_id", "name"],
-        },
-        {
-          model: BillProvider,
-          as: "provider",
-          attributes: ["provider_id", "name"],
-        },
-      ],
-
-      order: [["created_at", "DESC"]],
-    });
-
-    const formattedTransactions = transactions.map((transaction) => ({
-      id: transaction.transaction_id,
-      reference: transaction.transaction_ref,
-      amount: Number(transaction.total_amount),
-
-      status:
-        transaction.status === "success" ? "successful" : transaction.status,
-
-      token: transaction.token,
-      expiry_date: transaction.expiry_date,
-      customer_info: transaction.customer_info,
-      payment_method: transaction.payment_method,
-
-      category: transaction.category
-        ? {
-            id: transaction.category.category_id,
-            name: transaction.category.name,
-          }
-        : null,
-
-      provider: transaction.provider
-        ? {
-            id: transaction.provider.provider_id,
-            name: transaction.provider.name,
-          }
-        : null,
-
-      created_at: transaction.createdAt,
-    }));
-
-    return res.status(200).json({
-      message: "Bill transactions retrieved successfully",
-      transactions: formattedTransactions,
-    });
-  } catch (error) {
-    console.error("Get user bill transactions error:", error);
-
-    return res.status(500).json({
-      message: "Failed to retrieve bill transactions",
-    });
   }
 };
 
@@ -484,4 +831,8 @@ module.exports = {
   requeryTransaction,
   getUserBillTransactions,
   getBillTransactionById,
+  getBillProviders,
+  getBillProducts,
+  verifyElectricityMeter,
+  verifyTVSmartCard,
 };

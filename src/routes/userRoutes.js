@@ -22,6 +22,9 @@ const {
   createPin,
   changePin,
   getUserTransactionById,
+  createBeneficiary,
+  getUserBeneficiaries,
+  deleteBeneficiary,
 } = require("../controllers/userController");
 const validationmiddleware = require("../middlewares/validationMiddleware");
 const {
@@ -73,5 +76,10 @@ router.patch("/request/phone/change", UserAuthorization, requestPhoneChange);
 router.post("/verify/phone/change", UserAuthorization, verifyPhoneChange);
 router.get("/transactions/bills", UserAuthorization, getUserBillTransactions);
 router.get("/transactions/bills/:id", UserAuthorization, getBillTransactionById);
+router.post("/beneficiaries",UserAuthorization, createBeneficiary);
+
+router.get("/beneficiaries", UserAuthorization, getUserBeneficiaries);
+
+router.delete("/beneficiaries/:id", UserAuthorization, deleteBeneficiary);
 
 module.exports = router;

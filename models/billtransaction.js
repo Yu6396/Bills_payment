@@ -4,9 +4,18 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class BillTransaction extends Model {
     static associate(models) {
-      BillTransaction.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
-      BillTransaction.belongsTo(models.BillCategory, { foreignKey: "category_id", as: "category" });
-      BillTransaction.belongsTo(models.BillProvider, { foreignKey: "provider_id", as: "provider" });
+      BillTransaction.belongsTo(models.User, {
+        foreignKey: "user_id",
+        as: "user",
+      });
+      BillTransaction.belongsTo(models.BillCategory, {
+        foreignKey: "category_id",
+        as: "category",
+      });
+      BillTransaction.belongsTo(models.BillProvider, {
+        foreignKey: "provider_id",
+        as: "provider",
+      });
     }
   }
 
@@ -27,28 +36,32 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0.0,
       },
-      transaction_ref: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+      transaction_ref: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        unique: true,
+      },
       vtpass_reference: { type: DataTypes.STRING(100) },
-       token: { type: DataTypes.STRING(200) },  // For electricity or PIN-based services
-      expiry_date: { type: DataTypes.DATE },  
+      token: { type: DataTypes.STRING(200) }, // For electricity or PIN-based services
+      expiry_date: { type: DataTypes.DATE },
       status: {
         type: DataTypes.ENUM("pending", "success", "failed"),
         defaultValue: "pending",
       },
       payment_method: { type: DataTypes.STRING(50) },
-      customer_info: { type: DataTypes.STRING(100) }, 
+      customer_info: { type: DataTypes.STRING(100) },
       refunded: {
-  type: DataTypes.BOOLEAN,
-  allowNull: false,
-  defaultValue: false,
-}
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
     },
     {
       sequelize,
       modelName: "BillTransaction",
       tableName: "bill_transactions",
       underscored: true,
-    }
+    },
   );
 
   return BillTransaction;

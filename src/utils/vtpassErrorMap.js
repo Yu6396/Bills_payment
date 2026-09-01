@@ -1,6 +1,6 @@
 // vtpassErrorMap.js
 const vtpassErrorMap = {
-  "000": "✅ Transaction successful",
+  "000": "Transaction successful",
   "016": "❌ Transaction could not be completed. Please try again or contact support.",
   "028": "⚠️ This product is not enabled on your account. Please contact support.",
   "099": "⚠️ Invalid customer details (phone, smartcard, or meter number).",
